@@ -147,7 +147,7 @@ if not df.empty:
     st.markdown("---")
 
 # --- 7. SIDEBAR (MIT INFOTEXT) ---
-st.sidebar.header("👟 Spieler Kabine")
+st.sidebar.header("👟 Spieler-Kabine")
 
 # HIER IST DER INFOTEXT WIEDER:
 st.sidebar.info("""
