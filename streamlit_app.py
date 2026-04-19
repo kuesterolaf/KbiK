@@ -8,11 +8,15 @@ st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout=
 # --- LOGOS OBEN ANZEIGEN ---
 col1, col2 = st.columns([1, 1])
 with col1:
-    # Hier nutzen wir das KbiK-Logo
-    st.image("KbiK-Logo.jpg", width=250)
+    try:
+        st.image("KbiK-Logo.jpg", width=250)
+    except:
+        st.warning("KbiK-Logo fehlt auf GitHub")
 with col2:
-    # Hier nutzen wir das FLVW-Logo
-    st.image("Logo-FLVW (1).svg", width=250)
+    try:
+        st.image("Logo-FLVW (1).svg", width=250)
+    except:
+        st.warning("FLVW-Logo fehlt auf GitHub")
 
 st.title("⚽ Kicken beginnt im Kopf")
 st.subheader("Die offizielle Sommer-Leseliga des FLVW")
@@ -71,6 +75,7 @@ def berechne_team_punkte(team_df):
     bonus = team_df[team_df["Typ"] == "Bonus"]["Punkte"].sum()
     lese_df = team_df[team_df["Typ"] == "Lesen"]
     if not lese_df.empty:
+        # Deckelung bei 20 Punkten pro Woche laut Lesepass
         wochen_lese_pkt = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum()
     else:
         wochen_lese_pkt = 0
@@ -107,5 +112,6 @@ with side_col:
 st.markdown("---")
 with st.expander("📝 Regeln & Punktesystem"):
     st.write("**Punkte-Regeln:**")
-    st.write("- Lesen (Minuten): Maximal 20 Punkte pro Woche und Kind.")
-    st.write("- Bücher & Rezensionen: Zählen zusätzlich und sind nicht gedeckelt.")
+    st.write("- **Lesen (Minuten):** Maximal 20 Punkte pro Woche und Kind.")
+    st.write("- **Bücher & Rezensionen:** Zählen zusätzlich und sind nicht gedeckelt.")
+    st.write("- **Fair Play:** Jede Minute zählt, aber seid ehrlich!")
