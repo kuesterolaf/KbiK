@@ -1,71 +1,102 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
-# --- KONFIGURATION & STYLING ---
+# --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽")
 
-# Individuelles CSS für Fußball-Vibe
-st.markdown("""
-    <style>
-    .main { background-color: #f0f8f0; }
-    .stButton>button { background-color: #2e7d32; color: white; border-radius: 20px; }
-    h1 { color: #1b5e20; }
-    </style>
-    """, unsafe_allow_html=True)
-
 st.title("⚽ Kicken beginnt im Kopf")
-st.subheader("Die Sommer-Leseliga für Champions")
+st.subheader("Die offizielle Sommer-Leseliga")
 
-# --- DATEN-BACKEND (Simulation) ---
-# In der finalen Version verbinden wir das mit einem Google Sheet
+# --- DATEN-STRUKTUR ---
 if 'liga_daten' not in st.session_state:
-    st.session_state.liga_daten = pd.DataFrame(columns=["Kind", "Team", "Tore"])
+    st.session_state.liga_daten = pd.DataFrame(columns=[
+        "Datum", "Kind", "Team", "Typ", "Details", "Punkte"
+    ])
 
+# Die Teams laut deinem Projekt
 teams = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
 
-# --- SIDEBAR: SPIELERKABINE (Eingabe) ---
+# --- SIDEBAR: SPIELERKABINE ---
 st.sidebar.header("👟 Spielerkabine")
-st.sidebar.write("Eltern: Tragt hier die Treffer eurer Kinder ein.")
+st.sidebar.info("Fair Play geht vor! Seid ehrlich beim Eintragen. [cite: 45, 46]")
 
-with st.sidebar.form("treffer_form"):
+with st.sidebar.form("lese_form"):
     team_auswahl = st.selectbox("Team wählen:", teams)
     kind_name = st.text_input("Name des Kindes (intern):")
-    aktion = st.radio("Was wurde geschafft?", ["15 Min. Lesen (1 Tor)", "Buch beendet (5 Tore)"])
     
-    submit = st.form_submit_button("Treffer verbuchen!")
+    # Punkteliste basierend auf dem Lesepass [cite: 56]
+    option = st.selectbox("Was wurde erreicht?", [
+        "30 min Lesen (2 Pkt)",
+        "60 min Lesen (4 Pkt)",
+        "Buch bis 100 Seiten (4 Pkt)",
+        "Buch 101 bis 200 Seiten (8 Pkt)",
+        "Buch über 201 Seiten (12 Pkt)",
+        "Lieblingsbuch + Mini-Rezension (5 Pkt)"
+    ])
+    
+    submit = st.form_submit_button("Ergebnis eintragen")
     
     if submit:
-        tore = 1 if "15 Min" in aktion else 5
-        neuer_eintrag = {"Kind": kind_name, "Team": team_auswahl, "Tore": tore}
+        # Punktezuordnung laut Entwurf [cite: 56]
+        pkt_map = {
+            "30 min Lesen (2 Pkt)": 2, 
+            "60 min Lesen (4 Pkt)": 4,
+            "Buch bis 100 Seiten (4 Pkt)": 4, 
+            "Buch 101 bis 200 Seiten (8 Pkt)": 8,
+            "Buch über 201 Seiten (12 Pkt)": 12, 
+            "Lieblingsbuch + Mini-Rezension (5 Pkt)": 5
+        }
+        
+        neuer_eintrag = {
+            "Datum": datetime.now().strftime("%Y-%W"),
+            "Kind": kind_name,
+            "Team": team_auswahl,
+            "Typ": "Lesen" if "min Lesen" in option else "Bonus",
+            "Details": option,
+            "Punkte": pkt_map[option]
+        }
+        
         st.session_state.liga_daten = pd.concat([st.session_state.liga_daten, pd.DataFrame([neuer_eintrag])], ignore_index=True)
-        st.sidebar.success(f"Tor für {team_auswahl}!")
+        st.sidebar.success(f"Eintrag für {team_auswahl} gespeichert!")
 
-# --- HAUPTPREICH: TABELLE & STADION ---
-col1, col2 = st.columns([2, 1])
+# --- LOGIK: WOCHEN-DECKELUNG & TABELLE ---
+df = st.session_state.liga_daten.copy()
 
-with col1:
-    st.header("🏆 Die Liga-Tabelle")
-    if not st.session_state.liga_daten.empty:
-        # Gruppierung nach Team
-        tabelle = st.session_state.liga_daten.groupby("Team")["Tore"].sum().reset_index()
-        tabelle = tabelle.sort_values(by="Tore", ascending=False).reset_index(drop=True)
-        tabelle.index += 1 # Rangliste bei 1 starten lassen
-        st.table(tabelle)
-    else:
-        st.info("Der Anpfiff ist erfolgt! Wartet auf die ersten Tore...")
-
-with col2:
-    st.header("🏟️ Stadion-Ziel")
-    gesamt_tore = st.session_state.liga_daten["Tore"].sum()
-    ziel = 500  # Beispielhaftes Saisonziel
-    fortschritt = min(gesamt_tore / ziel, 1.0)
+def berechne_team_punkte(team_df):
+    # Bonus (Bücher/Rezension) zählt immer voll [cite: 77]
+    bonus = team_df[team_df["Typ"] == "Bonus"]["Punkte"].sum()
     
-    st.metric("Tore insgesamt", f"{int(gesamt_tore)}")
-    st.progress(fortschritt)
-    st.write(f"Gemeinsames Ziel: {ziel} Tore")
+    # Lese-Minuten werden pro Kind/Woche auf maximal 20 Pkt gedeckelt [cite: 64, 76]
+    lese_df = team_df[team_df["Typ"] == "Lesen"]
+    if not lese_df.empty:
+        wochen_lese_pkt = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum()
+    else:
+        wochen_lese_pkt = 0
+    return bonus + wochen_lese_pkt
 
-# --- TEAM-DYNAMIK (Grafik) ---
-if not st.session_state.liga_daten.empty:
-    st.write("---")
-    st.header("📊 Team-Vergleich")
-    st.bar_chart(data=tabelle, x="Team", y="Tore")
+# --- HAUPTBEREICH ANZEIGE ---
+st.header("🏆 Die aktuelle Tabelle")
+if not df.empty:
+    team_scores = []
+    for t in teams:
+        score = berechne_team_punkte(df[df["Team"] == t])
+        team_scores.append({"Team": t, "Punkte": int(score)})
+    
+    tabelle_df = pd.DataFrame(team_scores).sort_values(by="Punkte", ascending=False).reset_index(drop=True)
+    tabelle_df.index += 1
+    st.table(tabelle_df)
+    
+    # Gesamtfortschritt
+    gesamt = tabelle_df["Punkte"].sum()
+    st.metric("Punkte insgesamt", f"{gesamt}")
+    st.progress(min(gesamt / 1000, 1.0))
+else:
+    st.info("Noch keine Ergebnisse. Der Anpfiff ist erfolgt – viel Spaß beim Lesen! [cite: 33]")
+
+# --- INFOS ---
+with st.expander("📝 Regeln & Punktesystem"):
+    st.write("**Punkte-Regeln:**")
+    st.write("- Lesen (Minuten): Maximal 20 Punkte pro Woche und Kind. [cite: 64, 76]")
+    st.write("- Bücher & Rezensionen: Zählen zusätzlich und sind nicht gedeckelt. [cite: 77]")
+    st.write("- Fair Play: Jede Minute zählt, aber seid ehrlich! [cite: 45, 46, 47]")
