@@ -28,7 +28,6 @@ def get_gspread_client():
     )
     return gspread.authorize(credentials)
 
-# Daten laden Funktion
 def load_data():
     client = get_gspread_client()
     sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
@@ -45,46 +44,45 @@ except Exception as e:
 
 # --- HEADER ---
 st.markdown("<h1 style='text-align: center;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>Die große Leseliga-Meisterschaft</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # --- SIDEBAR: EINGABE ---
 st.sidebar.header("👟 Spielerkabine")
+
 with st.sidebar.form("input_form", clear_on_submit=True):
-    name = st.text_input("Name des Kindes:")
-    team = st.selectbox("Team:", ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"])
-    ergebnis = st.selectbox("Ergebnis:", ["30 min Lesen (2 Pkt)", "60 min Lesen (4 Pkt)", "Rezension (5 Pkt)"])
+    # Name als Textfeld
+    eingabe_name = st.text_input("Vorname und Nachname des Kindes:").strip()
+    
+    # Team als Dropdown (wie gewünscht)
+    team_liste = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
+    eingabe_team = st.selectbox("Wähle dein Team:", team_liste)
+    
+    ergebnis = st.selectbox("Was wurde heute erreicht?", [
+        "-- Lesezeit --",
+        "30 min gelesen (2 Pkt)", 
+        "60 min gelesen (4 Pkt)",
+        "-- Buch abgeschlossen --",
+        "Buch bis 100 Seiten (5 Pkt)", 
+        "Buch bis 200 Seiten (10 Pkt)", 
+        "Buch über 200 Seiten (15 Pkt)"
+    ])
+    
     submit = st.form_submit_button("Eintrag speichern")
 
-    if submit and name:
-        pkt = 2 if "30" in ergebnis else 4 if "60" in ergebnis else 5
-        neue_zeile = [datetime.now().strftime("%d.%m.%Y"), name, team, "Lesen", ergebnis, pkt]
+    if submit and eingabe_name:
+        # CHECK: Existiert der Name schon mit einem anderen Team?
+        # Wir vergleichen alles in Kleinbuchstaben, um Tippfehler (Groß/Klein) zu ignorieren
+        historie = df[df["Kind"].str.lower() == eingabe_name.lower()]
         
-        try:
-            worksheet.append_row(neue_zeile)
-            st.sidebar.success(f"✅ Tor für {name}!")
-            st.rerun()
-        except Exception as e:
-            st.sidebar.error("Fehler beim Speichern.")
-
-# --- HAUPTBEREICH: TABELLE & STATISTIK ---
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    st.subheader("🏆 Aktuelle Tabelle")
-    if not df.empty:
-        # Punkte sicherstellen
-        df["Punkte"] = pd.to_numeric(df["Punkte"], errors='coerce').fillna(0)
-        ranking = df.groupby("Team")["Punkte"].sum().reset_index().sort_values("Punkte", ascending=False)
-        st.table(ranking.set_index("Team"))
-    else:
-        st.info("Noch keine Daten vorhanden.")
-
-with col2:
-    st.subheader("📜 Letzte Aktivitäten")
-    if not df.empty:
-        # Die letzten 10 Einträge (umgekehrt sortiert)
-        st.dataframe(df.iloc[::-1].head(10), use_container_width=True)
-
-st.markdown("---")
-st.caption("⚽ Viel Erfolg beim Lesen und Kicken!")
+        zugriff_erlaubt = True
+        if not historie.empty:
+            festgelegtes_team = historie["Team"].iloc[0]
+            if festgelegtes_team != eingabe_team:
+                st.sidebar.error(f"🚫 Stopp! {eingabe_name} ist bereits im Team **{festgelegtes_team}**. Du kannst nicht für ein anderes Team punkten!")
+                zugriff_erlaubt = False
+        
+        if zugriff_erlaubt:
+            # Punkte-Zuweisung
+            if "30 min" in ergebnis: pkt = 2
+            elif "60 min" in ergebnis: pkt = 4
+            elif "bis 100" in ergebnis: pkt =
