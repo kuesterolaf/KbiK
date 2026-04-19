@@ -4,14 +4,14 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- SEITEN-LAYOUT ---
+# --- SETUP ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# --- VERBINDUNG ZU GOOGLE SHEETS ---
+# --- GOOGLE CONNECTION ---
 @st.cache_resource
 def get_gspread_client():
     s = st.secrets["connections"]["gsheets"]
-    credentials = Credentials.from_service_account_info(
+    creds = Credentials.from_service_account_info(
         {
             "type": s["type"],
             "project_id": s["project_id"],
@@ -26,79 +26,82 @@ def get_gspread_client():
         },
         scopes=["https://www.googleapis.com/auth/spreadsheets"]
     )
-    return gspread.authorize(credentials)
+    return gspread.authorize(creds)
 
 def load_data():
     client = get_gspread_client()
-    sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-    sh = client.open_by_url(sheet_url)
-    worksheet = sh.get_worksheet(0)
-    data = worksheet.get_all_records()
-    return pd.DataFrame(data), worksheet
+    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    sh = client.open_by_url(url)
+    ws = sh.get_worksheet(0)
+    data = ws.get_all_records()
+    return pd.DataFrame(data), ws
 
 try:
     df, worksheet = load_data()
 except Exception as e:
-    st.error("Fehler beim Laden der Daten.")
+    st.error("Ladefehler!")
     df = pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
-# --- HEADER ---
-st.markdown("<h1 style='text-align: center;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
+# --- UI ---
+st.title("⚽ Kicken beginnt im Kopf")
 st.markdown("---")
 
-# --- SIDEBAR: SPIELERKABINE ---
 st.sidebar.header("👟 Spielerkabine")
-
 with st.sidebar.form("input_form", clear_on_submit=True):
-    # Name eingeben
-    eingabe_name = st.text_input("Vorname und Nachname des Kindes:").strip()
-    
-    # Team-Dropdown
-    team_liste = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
-    eingabe_team = st.selectbox("Wähle dein Team:", team_liste)
-    
-    # Ergebnis-Auswahl
-    ergebnis = st.selectbox("Was wurde heute erreicht?", [
+    name = st.text_input("Name (Vorname Nachname):").strip()
+    team = st.selectbox("Team:", ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"])
+    auswahl = st.selectbox("Ergebnis:", [
         "-- Bitte wählen --",
         "30 min gelesen (2 Pkt)", 
         "60 min gelesen (4 Pkt)",
-        "Buch bis 100 Seiten (5 Pkt)", 
-        "Buch bis 200 Seiten (10 Pkt)", 
-        "Buch über 200 Seiten (15 Pkt)"
+        "Buch bis 100 S. (5 Pkt)", 
+        "Buch bis 200 S. (10 Pkt)", 
+        "Buch über 200 S. (15 Pkt)"
     ])
-    
-    submit = st.form_submit_button("Eintrag speichern")
+    submit = st.form_submit_button("Speichern")
 
-    if submit and eingabe_name:
-        # Check: Ist der Name schon einem anderen Team zugeordnet?
-        historie = df[df["Kind"].str.lower() == eingabe_name.lower()]
+    if submit and name:
+        # Check ob Name schon in anderem Team
+        hist = df[df["Kind"].str.lower() == name.lower()]
         
-        zugriff_ok = True
-        if not historie.empty:
-            registriertes_team = historie["Team"].iloc[0]
-            if registriertes_team != eingabe_team:
-                st.sidebar.error(f"🚫 {eingabe_name} spielt bereits im Team '{registriertes_team}'!")
-                zugriff_ok = False
+        ok = True
+        if not hist.empty:
+            reg_team = hist["Team"].iloc[0]
+            if reg_team != team:
+                st.sidebar.error(f"Falsches Team! Registriert: {reg_team}")
+                ok = False
         
-        if zugriff_ok:
-            # Punkte-Logik (Sicher formatiert)
+        if ok:
             pkt = 0
-            if "30 min" in ergebnis:
-                pkt = 2
-            elif "60 min" in ergebnis:
-                pkt = 4
-            elif "bis 100" in ergebnis:
-                pkt = 5
-            elif "bis 200" in ergebnis and "über" not in ergebnis:
-                pkt = 10
-            elif "über 200" in ergebnis:
-                pkt = 15
+            if "30 min" in auswahl: pkt = 2
+            elif "60 min" in auswahl: pkt = 4
+            elif "bis 100" in auswahl: pkt = 5
+            elif "bis 200" in auswahl and "über" not in auswahl: pkt = 10
+            elif "über 200" in auswahl: pkt = 15
             
             if pkt > 0:
-                neue_zeile = [datetime.now().strftime("%d.%m.%Y"), eingabe_name, eingabe_team, "Lesen", ergebnis, pkt]
+                row = [datetime.now().strftime("%d.%m.%Y"), name, team, "Lesen", auswahl, pkt]
                 try:
-                    worksheet.append_row(neue_zeile)
-                    st.sidebar.success(f"✅ Tor für {eingabe_name}!")
+                    worksheet.append_row(row)
+                    st.sidebar.success("Gespeichert!")
                     st.rerun()
                 except:
-                    st.sidebar.error("
+                    st.sidebar.error("Fehler beim Schreiben!")
+            else:
+                st.sidebar.warning("Kategorie wählen!")
+    elif submit:
+        st.sidebar.warning("Name fehlt!")
+
+# --- ANZEIGE ---
+c1, c2 = st.columns([1, 1])
+with c1:
+    st.subheader("🏆 Tabelle")
+    if not df.empty:
+        df["Punkte"] = pd.to_numeric(df["Punkte"], errors='coerce').fillna(0)
+        rank = df.groupby("Team")["Punkte"].sum().reset_index().sort_values("Punkte", ascending=False)
+        st.table(rank.set_index("Team"))
+
+with c2:
+    st.subheader("📜 Letzte Aktivitäten")
+    if not df.empty:
+        st.dataframe(df.iloc[::-1].head(15), use_container_width=True)
