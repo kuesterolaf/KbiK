@@ -8,44 +8,49 @@ import os
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# --- DESIGN UPGRADE: ROTE SIDEBAR & WEISSE SCHRIFT ---
+# --- DESIGN UPGRADE: EXTREME ROTE SIDEBAR FIX ---
 st.markdown("""
     <style>
-    /* Sidebar Hintergrund auf FLVW-Rot */
+    /* 1. Sidebar Hintergrund auf FLVW-Rot */
     [data-testid="stSidebar"] {
-        background-color: #E31E24;
+        background-color: #E31E24 !important;
     }
     
-    /* ALLE Texte, Labels und Radio-Buttons in der Sidebar auf Weiß */
-    [data-testid="stSidebar"] .stMarkdown, 
-    [data-testid="stSidebar"] p, 
-    [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] h1,
-    [data-testid="stSidebar"] h2,
-    [data-testid="stSidebar"] h3,
-    [data-testid="stSidebar"] [data-testid="stMetricValue"],
-    [data-testid="stSidebar"] [data-testid="stMetricLabel"],
-    [data-testid="stSidebar"] .stRadio div {
-        color: #ffffff !important;
+    /* 2. Absolut ALLE Texte in der Sidebar auf Weiß zwingen */
+    [data-testid="stSidebar"] * {
+        color: white !important;
     }
 
-    /* Radio-Button Kreise und Checkboxen weiß färben */
-    [data-testid="stSidebar"] [data-baseweb="radio"] div {
-        background-color: transparent !important;
-        border-color: white !important;
+    /* 3. Spezieller Fix für Radio-Button Texte (die oft blau bleiben) */
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label p {
+        color: white !important;
     }
-    [data-testid="stSidebar"] [data-baseweb="checkbox"] div {
+
+    /* 4. Radio-Button Kreise weiß umranden */
+    [data-testid="stSidebar"] [data-baseweb="radio"] div:first-child {
         border-color: white !important;
     }
 
-    /* Eingabefelder in der Sidebar: Heller Hintergrund, dunkle Schrift für Lesbarkeit */
-    [data-testid="stSidebar"] .stTextInput>div>div>input,
-    [data-testid="stSidebar"] .stSelectbox>div>div>div {
-        background-color: #ffffff;
+    /* 5. Checkboxen weiß umranden */
+    [data-testid="stSidebar"] [data-baseweb="checkbox"] div:first-child {
+        border-color: white !important;
+    }
+
+    /* 6. Eingabefelder: Hintergrund Weiß, Text Schwarz (damit man sieht, was man tippt) */
+    [data-testid="stSidebar"] input, 
+    [data-testid="stSidebar"] select,
+    [data-testid="stSidebar"] textarea,
+    [data-testid="stSidebar"] [data-baseweb="select"] div {
+        background-color: white !important;
+        color: #31333F !important;
+    }
+    
+    /* Text in den Dropdown-Menüs (Selectbox) schwarz machen */
+    div[data-baseweb="popover"] * {
         color: #31333F !important;
     }
 
-    /* Metriken Styling im Hauptbereich */
+    /* 7. Metriken Styling im Hauptbereich */
     .stMetric { 
         background-color: #ffffff; 
         padding: 15px; 
@@ -54,17 +59,17 @@ st.markdown("""
         border: 1px solid #f0f2f6; 
     }
     
-    /* Button Styling (Weißer Button auf rotem Grund) */
+    /* 8. Weißer Button auf rotem Grund */
     div.stButton > button:first-child {
-        background-color: #ffffff;
-        color: #E31E24;
-        border: none;
-        font-weight: bold;
+        background-color: #ffffff !important;
+        color: #E31E24 !important;
+        border: none !important;
+        font-weight: bold !important;
         width: 100%;
     }
     div.stButton > button:first-child:hover {
-        background-color: #f0f2f6;
-        color: #b31419;
+        background-color: #f0f2f6 !important;
+        color: #b31419 !important;
     }
     
     /* Titel-Logo Ausrichtung */
