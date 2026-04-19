@@ -14,30 +14,23 @@ SPALTEN = ["Datum", "Vorname", "Nachname", "Team", "Typ", "Details", "Punkte"]
 # --- 2. DESIGN UPGRADE (CSS) ---
 st.markdown("""
     <style>
-    /* Sidebar Grunddesign */
     [data-testid="stSidebar"] { background-color: #E31E24 !important; }
     [data-testid="stSidebar"] * { color: white !important; }
     [data-testid="stSidebar"] [data-testid="stMetric"] { background-color: transparent !important; border: none !important; padding: 0px !important; }
     [data-testid="stSidebar"] input, [data-testid="stSidebar"] [data-baseweb="select"] div { background-color: white !important; color: #31333F !important; }
-
-    /* Header Zentrierung */
     .header-container { text-align: center; width: 100%; }
     .tight-title { margin-top: -100px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
-    .tight-subtitle { margin-top: -50px !important; color: #666 !important; text-align: center; }
-
-    /* Metriken Hauptbereich */
+    .tight-subtitle { margin-top: -40px !important; color: #666 !important; text-align: center; }
     [data-testid="stMain"] [data-testid="stMetric"] { 
         background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #f0f2f6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     [data-testid="stMain"] [data-testid="stMetric"] * { color: #31333F !important; }
-
-    /* Button Fix */
     [data-testid="stSidebar"] button[kind="primaryFormSubmit"], [data-testid="stSidebar"] .stButton > button {
         background-color: white !important; border: 2px solid #31333F !important; border-radius: 5px !important; width: 100% !important; height: 3em !important;
     }
     [data-testid="stSidebar"] button p, [data-testid="stSidebar"] button span { color: #E31E24 !important; font-weight: bold !important; }
     
-    /* Tabellen Header Fett Styling */
+    /* Tabellen Styling: Header fett & Index ausblenden */
     th { font-weight: bold !important; background-color: #f0f2f6 !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -89,7 +82,7 @@ def get_capped_ranking(df_full):
     stats = total.groupby('Team').agg(Gesamt=('Punkte', 'sum'), Spieler=('Kind_ID', 'nunique')).reset_index()
     stats['Durchschnitt'] = (stats['Gesamt'] / stats['Spieler']).round(2)
     
-    # Ranking berechnen & Platzierung hinzufügen
+    # Ranking sortieren und Platzierung als echte Spalte einfügen
     ranking = stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False).reset_index(drop=True)
     ranking.insert(0, 'Platz', ranking.index + 1)
     return ranking
@@ -149,17 +142,17 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
                     st.cache_resource.clear()
                     st.rerun()
 
-# --- 8. TABELLEN (PLATZIERUNG + FETT) ---
+# --- 8. TABELLEN ---
 col_tab1, col_tab2 = st.columns([1, 1.2])
 with col_tab1:
     st.subheader("🏆 Team-Tabelle (Top 5)", anchor=False)
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty: 
-        # Platzierung anzeigen & Header fett stylen
-        st.table(ranking_data.head(5).set_index("Platz").style.format({"Durchschnitt": "{:.2f}"}))
+        # FIX: Platzierung als sichtbare Spalte, Index versteckt
+        st.table(ranking_data.head(5).assign(temp='').set_index('temp').style.format({"Durchschnitt": "{:.2f}"}))
         if len(ranking_data) > 5:
             with st.expander("Vollständige Tabelle anzeigen"):
-                st.table(ranking_data.iloc[5:].set_index("Platz").style.format({"Durchschnitt": "{:.2f}"}))
+                st.table(ranking_data.iloc[5:].assign(temp='').set_index('temp').style.format({"Durchschnitt": "{:.2f}"}))
     else: st.write("Noch keine Daten.")
 
 with col_tab2:
