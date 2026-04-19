@@ -6,33 +6,37 @@ from datetime import datetime
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# --- HEADER (Altes Design ohne Logos) ---
+# --- HEADER (Old Design Style) ---
 st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; font-weight: bold; font-size: 1.2em;'>Die offizielle Sommer-Leseliga des FLVW</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- VERBINDUNG ZUM SHEET ---
+# --- VERBINDUNG & DATEN-SETUP ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-def load_data():
-    try:
-        data = conn.read(ttl="0s")
-        if data is None or data.empty:
-            return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
-        return data
-    except:
-        return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
+# Lokaler Speicher, falls das Sheet blockiert
+if 'lokale_daten' not in st.session_state:
+    st.session_state.lokale_daten = pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
-df_sheet = load_data()
+def load_all_data():
+    try:
+        sheet_data = conn.read(ttl="0s")
+        if sheet_data is not None and not sheet_data.empty:
+            # Kombiniere Sheet-Daten mit neuen lokalen Daten der Sitzung
+            return pd.concat([sheet_data, st.session_state.lokale_daten], ignore_index=True)
+    except:
+        pass
+    return st.session_state.lokale_daten
+
+df_aktuell = load_all_data()
 teams = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
 
 # --- SIDEBAR: SPIELERKABINE ---
 st.sidebar.header("👟 Spielerkabine")
-st.sidebar.info("Fair Play geht vor! Seid ehrlich beim Eintragen.")
 
 with st.sidebar.form("lese_form"):
     team_auswahl = st.selectbox("Team wählen:", teams)
-    kind_name = st.text_input("Name des Kindes (intern):")
+    kind_name = st.text_input("Name des Kindes:")
     option = st.selectbox("Was wurde erreicht?", [
         "30 min Lesen (2 Pkt)", "60 min Lesen (4 Pkt)",
         "Buch bis 100 Seiten (4 Pkt)", "Buch 101 bis 200 Seiten (8 Pkt)",
@@ -50,41 +54,43 @@ with st.sidebar.form("lese_form"):
         neuer_eintrag = pd.DataFrame([{
             "Datum": datetime.now().strftime("%Y-%W"),
             "Kind": kind_name, "Team": team_auswahl,
-            "Typ": "Lesen" if "min Lesen" in option else "Bonus",
+            "Typ": "Lesen" if "min" in option else "Bonus",
             "Details": option, "Punkte": pkt_map[option]
         }])
         
+        # 1. Lokal speichern (damit es sofort angezeigt wird)
+        st.session_state.lokale_daten = pd.concat([st.session_state.lokale_daten, neuer_eintrag], ignore_index=True)
+        
+        # 2. Versuchen ins Sheet zu schreiben
         try:
-            updated_df = pd.concat([df_sheet, neuer_eintrag], ignore_index=True)
-            conn.update(data=updated_df)
-            st.sidebar.success(f"Tor für {team_auswahl}!")
-            st.rerun()
-        except Exception as e:
-            st.sidebar.error("Fehler beim Speichern: Bitte im Google Sheet auf 'Editor' umstellen!")
+            full_df = load_all_data()
+            conn.update(data=full_df)
+            st.sidebar.success("Erfolg! Im Google Sheet gespeichert.")
+        except:
+            st.sidebar.warning("Lokal gespeichert! (Google Sheet Schreibzugriff verweigert)")
+        
+        st.rerun()
 
 # --- LOGIK: BERECHNUNG ---
 def berechne_team_punkte(team_df):
     if team_df.empty: return 0
     team_df["Punkte"] = pd.to_numeric(team_df["Punkte"], errors='coerce').fillna(0)
-    
     bonus = team_df[team_df["Typ"] == "Bonus"]["Punkte"].sum()
     lese_df = team_df[team_df["Typ"] == "Lesen"].copy()
-    
     if not lese_df.empty:
-        # Wochen-Deckelung 20 Pkt/Kind
         wochen_lese_pkt = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum()
     else:
         wochen_lese_pkt = 0
     return bonus + wochen_lese_pkt
 
-# --- HAUPTBEREICH: ALTES ZWEI-SPALTEN-LAYOUT ---
+# --- LAYOUT: TABELLE & STATISTIK ---
 col_main, col_stat = st.columns([2, 1])
 
 with col_main:
     st.header("🏆 Die aktuelle Tabelle")
     team_scores = []
     for t in teams:
-        score = berechne_team_punkte(df_sheet[df_sheet["Team"] == t])
+        score = berechne_team_punkte(df_aktuell[df_aktuell["Team"] == t])
         team_scores.append({"Team": t, "Punkte": int(score)})
     
     tabelle_df = pd.DataFrame(team_scores).sort_values(by="Punkte", ascending=False).reset_index(drop=True)
@@ -99,9 +105,6 @@ with col_stat:
     st.progress(min(gesamt / 1000, 1.0))
     st.write(f"Noch {max(1000 - gesamt, 0)} Punkte bis zum Ziel!")
 
-# --- REGELN ---
 st.markdown("---")
-with st.expander("📝 Regeln & Punktesystem"):
-    st.write("- **Lesezeit:** Pro Kind und Woche maximal 20 Punkte.")
-    st.write("- **Bücher:** Zählen immer voll (keine Deckelung).")
-    st.write("- **Fair Play:** Jedes gelesene Wort bringt dein Team näher zum Ziel!")
+with st.expander("📝 Info"):
+    st.write("Die Tabelle aktualisiert sich bei jedem Eintrag automatisch.")
