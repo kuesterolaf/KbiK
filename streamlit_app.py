@@ -6,7 +6,7 @@ from datetime import datetime
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# --- HEADER IM ALTEN STIL ---
+# --- HEADER (Altes Design ohne Logos) ---
 st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; font-weight: bold; font-size: 1.2em;'>Die offizielle Sommer-Leseliga des FLVW</p>", unsafe_allow_html=True)
 st.markdown("---")
@@ -54,10 +54,13 @@ with st.sidebar.form("lese_form"):
             "Details": option, "Punkte": pkt_map[option]
         }])
         
-        updated_df = pd.concat([df_sheet, neuer_eintrag], ignore_index=True)
-        conn.update(data=updated_df)
-        st.sidebar.success(f"Tor für {team_auswahl}!")
-        st.rerun()
+        try:
+            updated_df = pd.concat([df_sheet, neuer_eintrag], ignore_index=True)
+            conn.update(data=updated_df)
+            st.sidebar.success(f"Tor für {team_auswahl}!")
+            st.rerun()
+        except Exception as e:
+            st.sidebar.error("Fehler beim Speichern: Bitte im Google Sheet auf 'Editor' umstellen!")
 
 # --- LOGIK: BERECHNUNG ---
 def berechne_team_punkte(team_df):
@@ -68,12 +71,13 @@ def berechne_team_punkte(team_df):
     lese_df = team_df[team_df["Typ"] == "Lesen"].copy()
     
     if not lese_df.empty:
+        # Wochen-Deckelung 20 Pkt/Kind
         wochen_lese_pkt = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum()
     else:
         wochen_lese_pkt = 0
     return bonus + wochen_lese_pkt
 
-# --- HAUPTBEREICH: ZWEI-SPALTEN-LAYOUT ---
+# --- HAUPTBEREICH: ALTES ZWEI-SPALTEN-LAYOUT ---
 col_main, col_stat = st.columns([2, 1])
 
 with col_main:
@@ -98,7 +102,6 @@ with col_stat:
 # --- REGELN ---
 st.markdown("---")
 with st.expander("📝 Regeln & Punktesystem"):
-    st.write("**Punkte-Vergabe:**")
     st.write("- **Lesezeit:** Pro Kind und Woche maximal 20 Punkte.")
-    st.write("- **Bücher & Rezensionen:** Diese Punkte zählen immer voll oben drauf.")
-    st.write("- **Fair Play:** Seid ehrlich zu euch selbst und den anderen Teams!")
+    st.write("- **Bücher:** Zählen immer voll (keine Deckelung).")
+    st.write("- **Fair Play:** Jedes gelesene Wort bringt dein Team näher zum Ziel!")
