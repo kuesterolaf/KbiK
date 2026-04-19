@@ -6,6 +6,14 @@ from google.oauth2.service_account import Credentials
 
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
+
+# CSS für das Styling der Metriken
+st.markdown("""
+    <style>
+    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #f0f2f6; }
+    </style>
+    """, unsafe_allow_html=True)
+
 LIMIT_MINUTEN = 20
 SPALTEN = ["Datum", "Vorname", "Nachname", "Team", "Typ", "Details", "Punkte"]
 
@@ -83,7 +91,10 @@ if not df.empty:
         st.metric("Aktive Spieler 🏃‍♂️", df['Full_ID'].nunique() if 'Full_ID' in df.columns else 0)
     st.markdown("---")
 
-# --- SIDEBAR: SPIELER KABINE ---
+# --- SIDEBAR: LOGO & SPIELER KABINE ---
+# Logo ganz oben in der Sidebar platzieren
+st.sidebar.image("flvw-logo.png", use_container_width=True)
+st.sidebar.markdown("---")
 st.sidebar.header("👟 Spieler Kabine")
 
 st.sidebar.info("""
@@ -168,7 +179,7 @@ with col1:
 with col2:
     st.subheader("📜 Live-Ticker", anchor=False)
     if not df.empty:
-        # Datenschutz: Namen im Ticker ausblenden
+        # Datenschutz: Keine Namen im öffentlichen Ticker
         hist_df = df.iloc[::-1][["Datum", "Team", "Details"]].head(10)
         st.table(hist_df)
     else:
@@ -178,9 +189,9 @@ with col2:
 st.markdown("---")
 with st.expander("⚖️ Datenschutz & Impressum"):
     st.write("""
-    **Datenschutzhinweis:** Mit der Nutzung dieser App und der Eingabe von Vorname, Nachname und Stützpunkt erklärst du dich einverstanden, dass diese Daten zum Zwecke des Wettbewerbs gespeichert werden. 
-    Die Daten werden ausschließlich zur Berechnung des Team-Rankings verwendet und nicht an Dritte weitergegeben. 
-    Im öffentlichen Live-Ticker erscheinen keine Namen, um deine Privatsphäre zu schützen.
+    **Datenschutzhinweis:** Mit der Nutzung dieser App erklärst du dich einverstanden, dass Vorname, Nachname und Stützpunkt gespeichert werden. 
+    Die Daten dienen ausschließlich dem Wettbewerb und werden nicht an Dritte weitergegeben. 
+    Im Live-Ticker erscheinen keine Namen.
     
     **Verantwortlich:** Fußball- und Leichtathletik-Verband Westfalen e. V. (FLVW)  
     Jakob-Koenen-Straße 2, 59174 Kamen
