@@ -185,6 +185,7 @@ with col2:
     else:
         st.write("Warte auf erste Einträge...")
 
+st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler geteilt. Einzelne Spieler werden aus Datenschutzgründen nicht angezeigt!")
 # Hinzugefügt: Datenschutz & Impressum
 st.markdown("---")
 with st.expander("⚖️ Datenschutz & Impressum"):
@@ -193,4 +194,3 @@ with st.expander("⚖️ Datenschutz & Impressum"):
     Die Daten werden nicht an Dritte weitergegeben.
     **Verantwortlich:** Fußball- und Leichtathletik-Verband Westfalen e. V. (FLVW), Kamen.
     """)
-st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler geteilt.")
