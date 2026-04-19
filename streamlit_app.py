@@ -210,14 +210,14 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
 # --- 8. TABELLEN ---
 col_tab1, col_tab2 = st.columns([1, 1.2])
 with col_tab1:
-    st.subheader("🏆 Team-Tabelle", anchor=False)
+    st.subheader("🏆 Team-Ranking", anchor=False)
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty: 
         st.table(ranking_data.set_index("Team").style.format({"Durchschnitt": "{:.2f}"}))
     else: st.write("Noch keine Daten vorhanden.")
 
 with col_tab2:
-    st.subheader("📜 Letzte Aktivitäten", anchor=False)
+    st.subheader("📜 Live-Ticker", anchor=False)
     if not df.empty:
         st.dataframe(df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(10), use_container_width=True, hide_index=True)
 
