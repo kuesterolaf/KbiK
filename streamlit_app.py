@@ -1,4 +1,4 @@
-import streamlit as st
+iimport streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
@@ -6,35 +6,32 @@ from datetime import datetime
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# --- HEADER (Old Design Style) ---
+# --- HEADER (Altes Design) ---
 st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; font-weight: bold; font-size: 1.2em;'>Die offizielle Sommer-Leseliga des FLVW</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- VERBINDUNG & DATEN-SETUP ---
+# --- VERBINDUNG ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Lokaler Speicher, falls das Sheet blockiert
-if 'lokale_daten' not in st.session_state:
-    st.session_state.lokale_daten = pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
-
-def load_all_data():
+# DATEN LADEN
+def load_data():
     try:
-        sheet_data = conn.read(ttl="0s")
-        if sheet_data is not None and not sheet_data.empty:
-            # Kombiniere Sheet-Daten mit neuen lokalen Daten der Sitzung
-            return pd.concat([sheet_data, st.session_state.lokale_daten], ignore_index=True)
+        # Wir zwingen die App, das Sheet neu zu lesen
+        data = conn.read(ttl="0s")
+        if data is None or data.empty:
+            return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
+        return data
     except:
-        pass
-    return st.session_state.lokale_daten
+        return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
-df_aktuell = load_all_data()
+df_aktuell = load_data()
 teams = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
 
 # --- SIDEBAR: SPIELERKABINE ---
 st.sidebar.header("👟 Spielerkabine")
 
-with st.sidebar.form("lese_form"):
+with st.sidebar.form("lese_form", clear_on_submit=True):
     team_auswahl = st.selectbox("Team wählen:", teams)
     kind_name = st.text_input("Name des Kindes:")
     option = st.selectbox("Was wurde erreicht?", [
@@ -51,28 +48,30 @@ with st.sidebar.form("lese_form"):
             "Buch über 201 Seiten (12 Pkt)": 12, "Lieblingsbuch + Mini-Rezension (5 Pkt)": 5
         }
         
-        neuer_eintrag = pd.DataFrame([{
+        neuer_eintrag = {
             "Datum": datetime.now().strftime("%Y-%W"),
-            "Kind": kind_name, "Team": team_auswahl,
+            "Kind": kind_name, 
+            "Team": team_auswahl,
             "Typ": "Lesen" if "min" in option else "Bonus",
-            "Details": option, "Punkte": pkt_map[option]
-        }])
+            "Details": option, 
+            "Punkte": pkt_map[option]
+        }
         
-        # 1. Lokal speichern (damit es sofort angezeigt wird)
-        st.session_state.lokale_daten = pd.concat([st.session_state.lokale_daten, neuer_eintrag], ignore_index=True)
-        
-        # 2. Versuchen ins Sheet zu schreiben
+        # NEUE SPEICHER-METHODE:
         try:
-            full_df = load_all_data()
-            conn.update(data=full_df)
-            st.sidebar.success("Erfolg! Im Google Sheet gespeichert.")
-        except:
-            st.sidebar.warning("Lokal gespeichert! (Google Sheet Schreibzugriff verweigert)")
-        
-        st.rerun()
+            # Wir fügen die Zeile direkt zum bestehenden DataFrame hinzu
+            df_updated = pd.concat([df_aktuell, pd.DataFrame([neuer_eintrag])], ignore_index=True)
+            # Wir überschreiben das Sheet mit dem kompletten neuen Satz
+            conn.update(data=df_updated)
+            st.sidebar.success("TOR! Gespeichert.")
+            # Seite neu laden, um Daten aus dem Sheet zu ziehen
+            st.rerun()
+        except Exception as e:
+            st.sidebar.error("Fehler beim Speichern im Sheet!")
+            st.sidebar.info("Prüfe, ob das Sheet wirklich auf 'Jeder mit Link = Editor' steht.")
 
-# --- LOGIK: BERECHNUNG ---
-def berechne_team_punkte(team_df):
+# --- BERECHNUNG ---
+def berechne_punkte(team_df):
     if team_df.empty: return 0
     team_df["Punkte"] = pd.to_numeric(team_df["Punkte"], errors='coerce').fillna(0)
     bonus = team_df[team_df["Typ"] == "Bonus"]["Punkte"].sum()
@@ -83,14 +82,14 @@ def berechne_team_punkte(team_df):
         wochen_lese_pkt = 0
     return bonus + wochen_lese_pkt
 
-# --- LAYOUT: TABELLE & STATISTIK ---
+# --- LAYOUT ---
 col_main, col_stat = st.columns([2, 1])
 
 with col_main:
     st.header("🏆 Die aktuelle Tabelle")
     team_scores = []
     for t in teams:
-        score = berechne_team_punkte(df_aktuell[df_aktuell["Team"] == t])
+        score = berechne_punkte(df_aktuell[df_aktuell["Team"] == t])
         team_scores.append({"Team": t, "Punkte": int(score)})
     
     tabelle_df = pd.DataFrame(team_scores).sort_values(by="Punkte", ascending=False).reset_index(drop=True)
@@ -101,10 +100,5 @@ with col_stat:
     st.header("📊 Statistik")
     gesamt = sum([s["Punkte"] for s in team_scores])
     st.metric("Punkte insgesamt", f"{gesamt}")
-    st.write("**Stadion-Ziel (1000 Pkt):**")
     st.progress(min(gesamt / 1000, 1.0))
     st.write(f"Noch {max(1000 - gesamt, 0)} Punkte bis zum Ziel!")
-
-st.markdown("---")
-with st.expander("📝 Info"):
-    st.write("Die Tabelle aktualisiert sich bei jedem Eintrag automatisch.")
