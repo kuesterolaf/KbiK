@@ -8,7 +8,7 @@ import os
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# --- DESIGN UPGRADE: ROTE SIDEBAR & STYLING ---
+# --- DESIGN UPGRADE: ROTE SIDEBAR & WEISSE SCHRIFT ---
 st.markdown("""
     <style>
     /* Sidebar Hintergrund auf FLVW-Rot */
@@ -16,21 +16,33 @@ st.markdown("""
         background-color: #E31E24;
     }
     
-    /* Text in der Sidebar auf Weiß */
+    /* ALLE Texte, Labels und Radio-Buttons in der Sidebar auf Weiß */
     [data-testid="stSidebar"] .stMarkdown, 
     [data-testid="stSidebar"] p, 
     [data-testid="stSidebar"] label,
     [data-testid="stSidebar"] h1,
     [data-testid="stSidebar"] h2,
-    [data-testid="stSidebar"] h3 {
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] [data-testid="stMetricValue"],
+    [data-testid="stSidebar"] [data-testid="stMetricLabel"],
+    [data-testid="stSidebar"] .stRadio div {
         color: #ffffff !important;
     }
-    
-    /* Eingabefelder in der Sidebar lesbar machen */
+
+    /* Radio-Button Kreise und Checkboxen weiß färben */
+    [data-testid="stSidebar"] [data-baseweb="radio"] div {
+        background-color: transparent !important;
+        border-color: white !important;
+    }
+    [data-testid="stSidebar"] [data-baseweb="checkbox"] div {
+        border-color: white !important;
+    }
+
+    /* Eingabefelder in der Sidebar: Heller Hintergrund, dunkle Schrift für Lesbarkeit */
     [data-testid="stSidebar"] .stTextInput>div>div>input,
     [data-testid="stSidebar"] .stSelectbox>div>div>div {
-        background-color: #f0f2f6;
-        color: #31333F;
+        background-color: #ffffff;
+        color: #31333F !important;
     }
 
     /* Metriken Styling im Hauptbereich */
@@ -42,16 +54,17 @@ st.markdown("""
         border: 1px solid #f0f2f6; 
     }
     
-    /* Button Styling */
+    /* Button Styling (Weißer Button auf rotem Grund) */
     div.stButton > button:first-child {
         background-color: #ffffff;
         color: #E31E24;
-        border: 2px solid #ffffff;
+        border: none;
         font-weight: bold;
+        width: 100%;
     }
     div.stButton > button:first-child:hover {
         background-color: #f0f2f6;
-        color: #E31E24;
+        color: #b31419;
     }
     
     /* Titel-Logo Ausrichtung */
