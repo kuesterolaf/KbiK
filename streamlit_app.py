@@ -66,17 +66,27 @@ def get_capped_ranking(df_full):
     
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
-# --- UI ---
+# --- UI HAUPTBEREICH ---
 st.title("⚽ Kicken beginnt im Kopf")
-st.subheader("Die Sommer-Leseliga des FLVW", anchor=False) # anchor=False entfernt das Kettensymbol
+st.subheader("Die Sommer-Leseliga des FLVW", anchor=False)
 st.markdown("---")
 
-# SIDEBAR
+# --- SIDEBAR: SPIELER KABINE ---
 st.sidebar.header("👟 Spieler Kabine")
+
+# NEU: Die Info-Box für die Kids
+st.sidebar.info("""
+**So sammelst du Punkte:**
+1. Namen & Stützpunkt eingeben.
+2. Lesezeit oder Buch wählen.
+3. 'Eintragen' klicken.
+        
+Deine Punkte zählen sofort für deinen Stützpunkt!
+""")
+
 v_name = st.sidebar.text_input("Vorname:", key="v_final").strip()
 n_name = st.sidebar.text_input("Nachname:", key="n_final").strip()
 
-# Die 28 Stützpunkte aus der Auslosung
 t_liste = [
     "-- Bitte wählen --", 
     "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arnsberg/Soest", "Beckum", 
@@ -96,7 +106,7 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
     if not df.empty and 'Full_ID' in df.columns:
         existing = df[df['Full_ID'] == current_id]
         if not existing.empty and existing['Team'].iloc[0] != team_choice:
-            st.sidebar.error(f"Du bist bereits für '{existing['Team'].iloc[0]}' registriert!")
+            st.sidebar.error(f"Du bist bereits für '{existing['Team'].iloc[0]}' gemeldet!")
             can_proceed = False
 
     if can_proceed:
@@ -129,7 +139,7 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
                     except Exception:
                         st.sidebar.error("Fehler beim Speichern!")
 
-# --- HAUPTBEREICH ---
+# --- HAUPTBEREICH ANZEIGE ---
 col1, col2 = st.columns([1, 1.2])
 
 with col1:
@@ -149,4 +159,4 @@ with col2:
         st.write("Warte auf erste Einträge...")
 
 st.markdown("---")
-st.info("ℹ️ Team-Power: Punkte werden durch die Anzahl der Spieler des Stützpunktes geteilt. Spielernamen werden aus Datenschutzgründen nicht angezeigt.")
+st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler des Stützpunktes geteilt, damit es fair bleibt!")
