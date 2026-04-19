@@ -6,27 +6,26 @@ from datetime import datetime
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# Header (Altes Design ohne Logos)
+# Header
 st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-weight: bold; font-size: 1.2em;'>Die offizielle Sommer-Leseliga des FLVW</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-weight: bold;'>Die offizielle Sommer-Leseliga des FLVW</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Verbindung zum Google Sheet
+# Verbindung
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data():
     try:
-        data = conn.read(ttl="0s")
-        if data is None or data.empty:
-            return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
-        return data
-    except Exception:
+        # Wir lesen das Sheet ohne Cache (ttl=0), um immer live zu sein
+        return conn.read(ttl="0s")
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Daten: {e}")
         return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
 df_aktuell = load_data()
 teams = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
 
-# --- SIDEBAR: EINGABE ---
+# Sidebar
 st.sidebar.header("👟 Spielerkabine")
 with st.sidebar.form("lese_form", clear_on_submit=True):
     team_auswahl = st.selectbox("Team wählen:", teams)
@@ -45,34 +44,35 @@ with st.sidebar.form("lese_form", clear_on_submit=True):
             "Buch über 201 Seiten (12 Pkt)": 12, "Lieblingsbuch + Mini-Rezension (5 Pkt)": 5
         }
         
-        neuer_eintrag = {
+        neuer_eintrag = pd.DataFrame([{
             "Datum": datetime.now().strftime("%Y-%W"),
             "Kind": kind_name, "Team": team_auswahl,
             "Typ": "Lesen" if "min" in option else "Bonus",
             "Details": option, "Punkte": pkt_map[option]
-        }
+        }])
         
         try:
-            # Neuen Eintrag an bestehende Daten hängen
-            df_updated = pd.concat([df_aktuell, pd.DataFrame([neuer_eintrag])], ignore_index=True)
+            # Kombinieren und hochladen
+            df_updated = pd.concat([df_aktuell, neuer_eintrag], ignore_index=True)
             conn.update(data=df_updated)
-            st.sidebar.success(f"Tor für {team_auswahl}!")
+            st.sidebar.success("TOR! Gespeichert.")
             st.rerun()
-        except Exception:
-            st.sidebar.error("Speichern fehlgeschlagen!")
-            st.sidebar.info("Stelle sicher, dass im Google Sheet 'Mitbearbeiter' für den Link aktiv ist.")
+        except Exception as e:
+            st.sidebar.error("❌ Google blockiert immer noch!")
+            st.sidebar.write(f"Technischer Fehler: {e}")
+            st.sidebar.info("TIPP: Wenn 'Mitbearbeiter' aktiv ist, versuche im Sheet unter 'Teilen' -> 'Zahnrad-Symbol' den Haken bei 'Editoren können Berechtigungen ändern' zu setzen.")
 
-# --- BERECHNUNG & LAYOUT ---
+# Layout & Statistik (Tabelle und Balken)
+col_main, col_stat = st.columns([2, 1])
+
 def berechne_punkte(team_df):
-    if team_df.empty: return 0
+    if team_df is None or team_df.empty: return 0
+    # Punkte in Zahlen umwandeln
     team_df["Punkte"] = pd.to_numeric(team_df["Punkte"], errors='coerce').fillna(0)
     bonus = team_df[team_df["Typ"] == "Bonus"]["Punkte"].sum()
     lese_df = team_df[team_df["Typ"] == "Lesen"].copy()
     wochen_lese = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum() if not lese_df.empty else 0
     return int(bonus + wochen_lese)
-
-# Zwei-Spalten-Layout (Tabelle links, Statistik rechts)
-col_main, col_stat = st.columns([2, 1])
 
 with col_main:
     st.header("🏆 Die aktuelle Tabelle")
@@ -89,6 +89,5 @@ with col_stat:
     st.header("📊 Statistik")
     gesamt = sum([item["Punkte"] for item in scores])
     st.metric("Punkte insgesamt", f"{gesamt}")
-    st.write("**Stadion-Ziel (1000 Pkt):**")
     st.progress(min(gesamt / 1000, 1.0))
-    st.write(f"Noch {max(1000 - gesamt, 0)} Punkte bis zum Ziel!")
+    st.write(f"Noch {max(1000 - gesamt, 0)} Punkte bis zum Stadion-Ziel!")
