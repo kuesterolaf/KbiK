@@ -38,8 +38,8 @@ st.markdown("""
 
     /* Header Zentrierung */
     .header-container { text-align: center; width: 100%; }
-    .tight-title { margin-top: -100px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
-    .tight-subtitle { margin-top: -60px !important; color: #666 !important; text-align: center; }
+    .tight-title { margin-top: -15px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
+    .tight-subtitle { margin-top: -10px !important; color: #666 !important; text-align: center; }
 
     /* Metriken Hauptbereich */
     [data-testid="stMain"] [data-testid="stMetric"] { 
@@ -93,6 +93,7 @@ def load_data():
         df = pd.DataFrame(data)
         if not df.empty:
             df.columns = [c.strip() for c in df.columns]
+            # ID für den Abgleich (Kleinbuchstaben & bereinigt)
             df['Full_ID'] = df['Vorname'].astype(str).str.lower().str.strip() + " " + df['Nachname'].astype(str).str.lower().str.strip()
             df['Datum_dt'] = pd.to_datetime(df['Datum'], format='%d.%m.%Y', errors='coerce')
             df['KW'] = df['Datum_dt'].dt.isocalendar().week
@@ -148,8 +149,6 @@ if not df.empty:
 
 # --- 7. SIDEBAR (MIT INFOTEXT) ---
 st.sidebar.header("👟 Spieler-Kabine")
-
-# HIER IST DER INFOTEXT WIEDER:
 st.sidebar.info("""
 **So sammelst du Punkte:**
 1. Trage deinen Namen ein & wähle dein Team.
@@ -167,32 +166,46 @@ team_choice = st.sidebar.selectbox("Dein Stützpunkt:", t_liste, key="t_in")
 if v_input and n_input and team_choice != "-- Bitte wählen --":
     search_id = f"{v_input.lower()} {n_input.lower()}"
     kw, jahr = datetime.now().isocalendar()[1], datetime.now().isocalendar()[0]
+    
+    # NEU: Team-Abgleich prüfen
+    assigned_team = None
+    if not df.empty:
+        prev_entries = df[df['Full_ID'] == search_id]
+        if not prev_entries.empty:
+            assigned_team = prev_entries.iloc[0]['Team']
+
+    # Wochenpunkte für das Limit prüfen
     akt_m = 0
     if not df.empty:
         akt_m = df[(df['Full_ID'] == search_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min|Min"))]["Punkte"].sum()
     
     st.sidebar.metric("Deine Wochen-Punkte (Zeit)", f"{int(akt_m)} / {LIMIT_MINUTEN}")
-    kat = st.sidebar.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"])
     
-    with st.sidebar.form("entry_form", clear_on_submit=True):
-        if kat == "Lesezeit (Minuten)":
-            auswahl = st.selectbox("Dauer:", ["30 min gelesen (2 Pkt)", "60 min gelesen (4 Pkt)"])
-            p = 2 if "30" in auswahl else 4
-        else:
-            auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"])
-            p = 5 if "100" in auswahl else 10 if "200" in auswahl else 15
-            
-        confirm = st.checkbox("Ich bestätige meine Angaben.")
-        if st.form_submit_button("Eintragen"):
-            if not confirm:
-                st.error("Bitte Haken setzen!")
-            elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
-                st.error(f"Limit erreicht! Du hast diese Woche bereits {int(akt_m)} Punkte.")
-            elif worksheet:
-                worksheet.append_row([datetime.now().strftime("%d.%m.%Y"), v_input, n_input, team_choice, "Lesen", auswahl, p])
-                st.sidebar.success("Gespeichert!")
-                st.cache_resource.clear()
-                st.rerun()
+    # Validierung: Hat der Spieler ein anderes Team gewählt?
+    if assigned_team and assigned_team != team_choice:
+        st.sidebar.error(f"Achtung! Du bist bereits für das Team **{assigned_team}** registriert. Du kannst dein Team nicht wechseln.")
+    else:
+        kat = st.sidebar.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"])
+        
+        with st.sidebar.form("entry_form", clear_on_submit=True):
+            if kat == "Lesezeit (Minuten)":
+                auswahl = st.selectbox("Dauer:", ["30 min gelesen (2 Pkt)", "60 min gelesen (4 Pkt)"])
+                p = 2 if "30" in auswahl else 4
+            else:
+                auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"])
+                p = 5 if "100" in auswahl else 10 if "200" in auswahl else 15
+                
+            confirm = st.checkbox("Ich bestätige meine Angaben.")
+            if st.form_submit_button("Eintragen"):
+                if not confirm:
+                    st.error("Bitte Haken setzen!")
+                elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
+                    st.error(f"Limit erreicht! Du hast diese Woche bereits {int(akt_m)} Punkte.")
+                elif worksheet:
+                    worksheet.append_row([datetime.now().strftime("%d.%m.%Y"), v_input, n_input, team_choice, "Lesen", auswahl, p])
+                    st.sidebar.success("Gespeichert!")
+                    st.cache_resource.clear()
+                    st.rerun()
 
 # --- 8. TABELLEN ---
 col_tab1, col_tab2 = st.columns([1, 1.2])
