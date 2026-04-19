@@ -38,8 +38,8 @@ st.markdown("""
 
     /* Header Zentrierung */
     .header-container { text-align: center; width: 100%; }
-    .tight-title { margin-top: -100px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
-    .tight-subtitle { margin-top: -40px !important; color: #666 !important; text-align: center; }
+    .tight-title { margin-top: -15px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
+    .tight-subtitle { margin-top: -10px !important; color: #666 !important; text-align: center; }
 
     /* Metriken Hauptbereich */
     [data-testid="stMain"] [data-testid="stMetric"] { 
@@ -93,7 +93,6 @@ def load_data():
         df = pd.DataFrame(data)
         if not df.empty:
             df.columns = [c.strip() for c in df.columns]
-            # ID für den Abgleich (Kleinbuchstaben & bereinigt)
             df['Full_ID'] = df['Vorname'].astype(str).str.lower().str.strip() + " " + df['Nachname'].astype(str).str.lower().str.strip()
             df['Datum_dt'] = pd.to_datetime(df['Datum'], format='%d.%m.%Y', errors='coerce')
             df['KW'] = df['Datum_dt'].dt.isocalendar().week
@@ -167,26 +166,24 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
     search_id = f"{v_input.lower()} {n_input.lower()}"
     kw, jahr = datetime.now().isocalendar()[1], datetime.now().isocalendar()[0]
     
-    # NEU: Team-Abgleich prüfen
+    # Team-Abgleich (Sperre)
     assigned_team = None
     if not df.empty:
         prev_entries = df[df['Full_ID'] == search_id]
         if not prev_entries.empty:
             assigned_team = prev_entries.iloc[0]['Team']
 
-    # Wochenpunkte für das Limit prüfen
+    # Wochenpunkte-Check
     akt_m = 0
     if not df.empty:
         akt_m = df[(df['Full_ID'] == search_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min|Min"))]["Punkte"].sum()
     
     st.sidebar.metric("Deine Wochen-Punkte (Zeit)", f"{int(akt_m)} / {LIMIT_MINUTEN}")
     
-    # Validierung: Hat der Spieler ein anderes Team gewählt?
     if assigned_team and assigned_team != team_choice:
-        st.sidebar.error(f"Achtung! Du bist bereits für das Team **{assigned_team}** registriert. Du kannst dein Team nicht wechseln.")
+        st.sidebar.error(f"Achtung! Du bist bereits für das Team **{assigned_team}** registriert. Bitte wähle dieses Team aus.")
     else:
         kat = st.sidebar.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"])
-        
         with st.sidebar.form("entry_form", clear_on_submit=True):
             if kat == "Lesezeit (Minuten)":
                 auswahl = st.selectbox("Dauer:", ["30 min gelesen (2 Pkt)", "60 min gelesen (4 Pkt)"])
@@ -207,17 +204,27 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
                     st.cache_resource.clear()
                     st.rerun()
 
-# --- 8. TABELLEN ---
+# --- 8. TABELLEN (TOP 5 + REST) ---
 col_tab1, col_tab2 = st.columns([1, 1.2])
 with col_tab1:
-    st.subheader("🏆 Team-Ranking", anchor=False)
+    st.subheader("🏆 Team-Tabelle (Top 5)", anchor=False)
     ranking_data = get_capped_ranking(df)
+    
     if not ranking_data.empty: 
-        st.table(ranking_data.set_index("Team").style.format({"Durchschnitt": "{:.2f}"}))
-    else: st.write("Noch keine Daten vorhanden.")
+        # Top 5 anzeigen
+        top_5 = ranking_data.head(5).set_index("Team")
+        st.table(top_5.style.format({"Durchschnitt": "{:.2f}"}))
+        
+        # Rest im Expander verstecken (ab Platz 6)
+        if len(ranking_data) > 5:
+            with st.expander("Vollständige Tabelle anzeigen"):
+                rest_teams = ranking_data.iloc[5:].set_index("Team")
+                st.table(rest_teams.style.format({"Durchschnitt": "{:.2f}"}))
+    else: 
+        st.write("Noch keine Daten vorhanden.")
 
 with col_tab2:
-    st.subheader("📜 Live-Ticker", anchor=False)
+    st.subheader("📜 Letzte Aktivitäten", anchor=False)
     if not df.empty:
         st.dataframe(df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(10), use_container_width=True, hide_index=True)
 
