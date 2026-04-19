@@ -102,7 +102,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("---")
 
 # --- SIDEBAR (Original) ---
-st.sidebar.header("👟 Spieler Kabine")
+st.sidebar.header("👟 Spieler-Kabine")
 st.sidebar.info("**So sammelst du Punkte:**\n1. Namen & Stützpunkt eingeben.\n2. Lesezeit oder Buch wählen.\n3. Haken setzen & 'Eintragen' klicken.")
 
 v_name = st.sidebar.text_input("Vorname:", key="v_orig").strip()
@@ -144,7 +144,7 @@ with col1:
         st.write("Noch keine Daten für die Tabelle vorhanden.")
 
 with col2:
-    st.subheader("📜 Letzte Aktivitäten", anchor=False)
+    st.subheader("📜 Live-Ticker", anchor=False)
     if not df.empty:
         st.dataframe(df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(10), use_container_width=True, hide_index=True)
 
