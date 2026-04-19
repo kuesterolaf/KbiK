@@ -42,18 +42,14 @@ st.markdown("""
     .tight-subtitle { margin-top: -10px !important; color: #666 !important; text-align: center; }
 
     /* --- DER "FESTE" BUTTON FIX --- */
-    /* Wir definieren den Button als statisches Element ohne Schnickschnack */
     [data-testid="stSidebar"] button {
         background-color: #ffffff !important;
-        color: #E31E24 !important;
-        border: 2px solid #31333F !important; /* Dunkler Rand für Sichtbarkeit */
+        border: 2px solid #31333F !important;
         border-radius: 5px !important;
         height: 3em !important;
         width: 100% !important;
-        opacity: 1 !important;
     }
 
-    /* Wir zwingen die Schriftfarbe in JEDEM Zustand auf Rot */
     [data-testid="stSidebar"] button p,
     [data-testid="stSidebar"] button div,
     [data-testid="stSidebar"] button span {
@@ -61,14 +57,8 @@ st.markdown("""
         font-weight: bold !important;
     }
 
-    /* Diese Sektion überschreibt alle Streamlit-Hover-Effekte */
-    [data-testid="stSidebar"] button:hover, 
-    [data-testid="stSidebar"] button:active, 
-    [data-testid="stSidebar"] button:focus {
-        background-color: #ffffff !important;
-        color: #E31E24 !important;
-        border: 2px solid #31333F !important;
-        box-shadow: none !important;
+    [data-testid="stSidebar"] button:hover {
+        background-color: #eeeeee !important;
     }
     
     /* Metriken im Hauptbereich */
@@ -78,6 +68,7 @@ st.markdown("""
         border-radius: 10px; 
         border: 1px solid #f0f2f6; 
     }
+    [data-testid="stMain"] [data-testid="stMetric"] * { color: #31333F !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -100,11 +91,12 @@ def load_data():
         df = pd.DataFrame(data)
         if not df.empty:
             df.columns = [c.strip() for c in df.columns]
+            # Normalisierung für den Abgleich
+            df['Full_ID'] = df['Vorname'].astype(str).str.lower().str.strip() + " " + df['Nachname'].astype(str).str.lower().str.strip()
             df['Datum_dt'] = pd.to_datetime(df['Datum'], format='%d.%m.%Y', errors='coerce')
             df['KW'] = df['Datum_dt'].dt.isocalendar().week
             df['Jahr'] = df['Datum_dt'].dt.isocalendar().year
             df["Punkte"] = pd.to_numeric(df["Punkte"], errors='coerce').fillna(0)
-            df['Full_ID'] = df['Vorname'].astype(str).str.lower().str.strip() + " " + df['Nachname'].astype(str).str.lower().str.strip()
         return df, ws
     except Exception: return pd.DataFrame(columns=SPALTEN), None
 
@@ -113,29 +105,33 @@ df, worksheet = load_data()
 # --- 4. RANKING-LOGIK ---
 def get_capped_ranking(df_full):
     if df_full.empty or "Team" not in df_full.columns: return pd.DataFrame()
-    df_full['Kind_ID'] = df_full['Vorname'].astype(str) + " " + df_full['Nachname'].astype(str)
+    
+    # Kind-ID für das Ranking bilden
+    df_full['Kind_ID'] = df_full['Vorname'].astype(str).str.strip() + " " + df_full['Nachname'].astype(str).str.strip()
     mask_min = df_full["Details"].str.contains("min|Min", na=False, case=False)
+    
     df_min = df_full[mask_min].copy()
     if not df_min.empty:
         m_sum = df_min.groupby(['Jahr', 'KW', 'Kind_ID', 'Team'])['Punkte'].sum().reset_index()
         m_sum['Punkte'] = m_sum['Punkte'].clip(upper=LIMIT_MINUTEN)
         p_min = m_sum.groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index()
     else: p_min = pd.DataFrame(columns=["Kind_ID", "Team", "Punkte"])
+    
     df_extra = df_full[~mask_min].copy()
     p_extra = df_extra.groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index() if not df_extra.empty else pd.DataFrame(columns=["Kind_ID", "Team", "Punkte"])
+    
     total = pd.concat([p_min, p_extra]).groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index()
     if total.empty: return pd.DataFrame()
+    
     stats = total.groupby('Team').agg(Gesamt=('Punkte', 'sum'), Spieler=('Kind_ID', 'nunique')).reset_index()
     stats['Durchschnitt'] = (stats['Gesamt'] / stats['Spieler']).round(2)
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
-# --- 5. HAUPTBEREICH: ZENTRIERTER HEADER ---
+# --- 5. HAUPTBEREICH: HEADER ---
 col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
 with col_l2:
     if os.path.exists("KbiK-Logo.jpg"):
         st.image("KbiK-Logo.jpg", use_container_width=True)
-    elif os.path.exists("flvw-logo.png"):
-        st.image("flvw-logo.png", use_container_width=True)
     else:
         st.markdown("<h1 style='text-align: center;'>⚽</h1>", unsafe_allow_html=True)
 
@@ -157,40 +153,40 @@ if not df.empty:
 
 # --- 7. SIDEBAR ---
 st.sidebar.header("👟 Spieler Kabine")
-st.sidebar.info("**So sammelst du Punkte:**\n1. Name & Team eingeben.\n2. Lesezeit oder Buch wählen.\n3. Haken setzen & 'Eintragen'.")
-
-v_name = st.sidebar.text_input("Vorname:", key="v_final").strip()
-n_name = st.sidebar.text_input("Nachname:", key="n_final").strip()
+v_input = st.sidebar.text_input("Vorname:", key="v_in").strip()
+n_input = st.sidebar.text_input("Nachname:", key="n_in").strip()
 t_liste = ["-- Bitte wählen --", "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arnsberg/Soest", "Beckum", "Bielefeld", "Bochum", "Detmold", "Dortmund", "Gelsenkirchen", "Gütersloh", "Hagen", "Herford", "Herne", "Hochsauerlandkreis", "Höxter", "Lemgo", "Lippstadt", "Lübbecke/Minden", "Lüdenscheid/Iserlohn", "Münster I", "Münster II", "Olpe", "Paderborn", "Recklinghausen", "Siegen/Wittgenstein", "Steinfurt", "Tecklenburg", "Unna/Hamm"]
-team_choice = st.sidebar.selectbox("Dein Stützpunkt:", t_liste, key="t_final")
+team_choice = st.sidebar.selectbox("Dein Stützpunkt:", t_liste, key="t_in")
 
-if v_name and n_name and team_choice != "-- Bitte wählen --":
-    current_id = f"{v_name.lower()} {n_name.lower()}"
+if v_input and n_input and team_choice != "-- Bitte wählen --":
+    # WICHTIG: Abgleich-ID immer in Kleinbuchstaben
+    search_id = f"{v_input.lower()} {n_input.lower()}"
     kw, jahr = datetime.now().isocalendar()[1], datetime.now().isocalendar()[0]
     
+    # Punkte-Check
     akt_m = 0
-    if not df.empty and 'Full_ID' in df.columns:
-        akt_m = df[(df['Full_ID'] == current_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min|Min"))]["Punkte"].sum()
+    if not df.empty:
+        akt_m = df[(df['Full_ID'] == search_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min|Min"))]["Punkte"].sum()
     
     st.sidebar.metric("Deine Wochen-Punkte", f"{int(akt_m)} / {LIMIT_MINUTEN}")
-    kat = st.sidebar.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"], key="k_final")
+    kat = st.sidebar.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"])
     
-    with st.sidebar.form("entry_form"):
+    with st.sidebar.form("entry_form", clear_on_submit=True):
         if kat == "Lesezeit (Minuten)":
-            auswahl = st.selectbox("Dauer:", ["30 min gelesen (2 Pkt)", "60 min gelesen (4 Pkt)"], key="m_final")
+            auswahl = st.selectbox("Dauer:", ["30 min gelesen (2 Pkt)", "60 min gelesen (4 Pkt)"])
             p = 2 if "30" in auswahl else 4
         else:
-            auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"], key="b_final")
-            p = 5 if "100" in auswahl else 10 if "bis 200" in auswahl else 15
+            auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"])
+            p = 5 if "100" in auswahl else 10 if "200" in auswahl else 15
             
         confirm = st.checkbox("Ich bestätige meine Angaben.")
         if st.form_submit_button("Eintragen"):
             if not confirm:
                 st.error("Bitte Haken setzen!")
             elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
-                st.error("Wochenlimit erreicht!")
+                st.error(f"Limit erreicht! Du hast diese Woche schon {int(akt_m)} Punkte.")
             elif worksheet:
-                worksheet.append_row([datetime.now().strftime("%d.%m.%Y"), v_name, n_name, team_choice, "Lesen", auswahl, p])
+                worksheet.append_row([datetime.now().strftime("%d.%m.%Y"), v_input, n_input, team_choice, "Lesen", auswahl, p])
                 st.sidebar.success("Gespeichert!")
                 st.cache_resource.clear()
                 st.rerun()
@@ -202,16 +198,13 @@ with col_tab1:
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty: 
         st.table(ranking_data.set_index("Team").style.format({"Durchschnitt": "{:.2f}"}))
-    else:
-        st.write("Warte auf Daten...")
+    else: st.write("Warte auf Daten...")
 
 with col_tab2:
     st.subheader("📜 Letzte Aktivitäten", anchor=False)
     if not df.empty:
         st.dataframe(df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(10), use_container_width=True, hide_index=True)
 
-# --- 9. FUSSZEILE ---
 st.markdown("---")
 with st.expander("⚖️ Datenschutz & Impressum"):
     st.write("**Verantwortlich:** FLVW. Daten werden nur für den Wettbewerb genutzt.")
-st.info("ℹ️ Team-Power: Durchschnittliche Punkte pro Spieler.")
