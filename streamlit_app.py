@@ -94,7 +94,7 @@ if not df.empty:
     st.markdown("---")
 
 # --- SIDEBAR: SPIELER KABINE (Original Layout) ---
-st.sidebar.header("👟 Spieler Kabine")
+st.sidebar.header("👟 Spieler-Kabine")
 
 st.sidebar.info("""
 **So sammelst du Punkte:**
@@ -177,7 +177,7 @@ with col1:
         st.info("Noch keine Ergebnisse.")
 
 with col2:
-    st.subheader("📜 Letzte Aktivitäten", anchor=False)
+    st.subheader("📜 Live-Ticker", anchor=False)
     if not df.empty:
         # Datenschutz: Namen werden hier nicht angezeigt
         hist_df = df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(10)
