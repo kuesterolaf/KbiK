@@ -72,7 +72,7 @@ def get_capped_ranking(df_full):
 t_col1, t_col2 = st.columns([0.2, 0.8])
 with t_col1:
     if os.path.exists("flvw-logo.png"):
-        st.image("flvw-logo.png", width=150)
+        st.image("flvw-logo.png", width=300)
     else:
         st.write("⚽")
 with t_col2:
