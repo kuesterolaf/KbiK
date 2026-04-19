@@ -15,62 +15,30 @@ SPALTEN = ["Datum", "Vorname", "Nachname", "Team", "Typ", "Details", "Punkte"]
 st.markdown("""
     <style>
     /* Sidebar Grunddesign */
-    [data-testid="stSidebar"] { 
-        background-color: #E31E24 !important; 
-    }
-    [data-testid="stSidebar"] * { 
-        color: white !important; 
-    }
-    
-    /* Metrik in Sidebar (Punkteanzeige) */
-    [data-testid="stSidebar"] [data-testid="stMetric"] {
-        background-color: transparent !important;
-        border: none !important;
-        padding: 0px !important;
-    }
-    
-    /* Eingabefelder Sidebar */
-    [data-testid="stSidebar"] input, 
-    [data-testid="stSidebar"] [data-baseweb="select"] div { 
-        background-color: white !important; 
-        color: #31333F !important; 
-    }
+    [data-testid="stSidebar"] { background-color: #E31E24 !important; }
+    [data-testid="stSidebar"] * { color: white !important; }
+    [data-testid="stSidebar"] [data-testid="stMetric"] { background-color: transparent !important; border: none !important; padding: 0px !important; }
+    [data-testid="stSidebar"] input, [data-testid="stSidebar"] [data-baseweb="select"] div { background-color: white !important; color: #31333F !important; }
 
     /* Header Zentrierung */
     .header-container { text-align: center; width: 100%; }
     .tight-title { margin-top: -100px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
-    .tight-subtitle { margin-top: -40px !important; color: #666 !important; text-align: center; }
+    .tight-subtitle { margin-top: -50px !important; color: #666 !important; text-align: center; }
 
     /* Metriken Hauptbereich */
     [data-testid="stMain"] [data-testid="stMetric"] { 
-        background-color: #ffffff; 
-        padding: 15px; 
-        border-radius: 10px; 
-        border: 1px solid #f0f2f6; 
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #f0f2f6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     [data-testid="stMain"] [data-testid="stMetric"] * { color: #31333F !important; }
 
-    /* --- DER FORM-BUTTON FIX --- */
-    [data-testid="stSidebar"] button[kind="primaryFormSubmit"], 
-    [data-testid="stSidebar"] button[kind="secondaryFormSubmit"],
-    [data-testid="stSidebar"] .stButton > button {
-        background-color: white !important;
-        border: 2px solid #31333F !important;
-        border-radius: 5px !important;
-        width: 100% !important;
-        height: 3em !important;
+    /* Button Fix */
+    [data-testid="stSidebar"] button[kind="primaryFormSubmit"], [data-testid="stSidebar"] .stButton > button {
+        background-color: white !important; border: 2px solid #31333F !important; border-radius: 5px !important; width: 100% !important; height: 3em !important;
     }
-
-    [data-testid="stSidebar"] button p, 
-    [data-testid="stSidebar"] button span {
-        color: #E31E24 !important;
-        font-weight: bold !important;
-    }
+    [data-testid="stSidebar"] button p, [data-testid="stSidebar"] button span { color: #E31E24 !important; font-weight: bold !important; }
     
-    [data-testid="stSidebar"] button:hover {
-        background-color: #f0f2f6 !important;
-    }
+    /* Tabellen Header Fett Styling */
+    th { font-weight: bold !important; background-color: #f0f2f6 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -120,20 +88,19 @@ def get_capped_ranking(df_full):
     if total.empty: return pd.DataFrame()
     stats = total.groupby('Team').agg(Gesamt=('Punkte', 'sum'), Spieler=('Kind_ID', 'nunique')).reset_index()
     stats['Durchschnitt'] = (stats['Gesamt'] / stats['Spieler']).round(2)
-    return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
+    
+    # Ranking berechnen & Platzierung hinzufügen
+    ranking = stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False).reset_index(drop=True)
+    ranking.insert(0, 'Platz', ranking.index + 1)
+    return ranking
 
 # --- 5. HAUPTBEREICH: HEADER ---
 col_logo1, col_logo2, col_logo3 = st.columns([1, 1.5, 1])
 with col_logo2:
-    if os.path.exists("flvw-logo.png"):
-        st.image("flvw-logo.png", use_container_width=True)
-    else:
-        st.markdown("<h1 style='text-align: center;'>⚽</h1>", unsafe_allow_html=True)
+    if os.path.exists("flvw-logo.png"): st.image("flvw-logo.png", use_container_width=True)
+    else: st.markdown("<h1 style='text-align: center;'>⚽</h1>", unsafe_allow_html=True)
 
-st.markdown('<div class="header-container">', unsafe_allow_html=True)
-st.markdown('<h1 class="tight-title">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
-st.markdown('<h3 class="tight-subtitle">Die Sommer-Leseliga des FLVW</h3>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-container"><h1 class="tight-title">Kicken beginnt im Kopf</h1><h3 class="tight-subtitle">Die Sommer-Leseliga des FLVW</h3></div>', unsafe_allow_html=True)
 st.markdown("---")
 
 # --- 6. METRIKEN ---
@@ -148,14 +115,7 @@ if not df.empty:
 
 # --- 7. SIDEBAR ---
 st.sidebar.header("👟 Spieler-Kabine")
-st.sidebar.info("""
-**So sammelst du Punkte:**
-1. Trage deinen Namen ein & wähle dein Team.
-2. Wähle Lesezeit oder ein fertiges Buch.
-3. Bestätige deine Angaben und klicke auf 'Eintragen'.
-
-*Hinweis: Lesezeit ist auf 20 Punkte pro Woche begrenzt.*
-""")
+st.sidebar.info("**So sammelst du Punkte:**\n1. Name & Team wählen.\n2. Lesezeit oder Buch wählen.\n3. Bestätigen & Eintragen.\n\n*Limit: 20 Pkt. Lesezeit pro Woche.*")
 
 v_input = st.sidebar.text_input("Vorname:", key="v_in").strip()
 n_input = st.sidebar.text_input("Nachname:", key="n_in").strip()
@@ -165,17 +125,8 @@ team_choice = st.sidebar.selectbox("Dein Stützpunkt:", t_liste, key="t_in")
 if v_input and n_input and team_choice != "-- Bitte wählen --":
     search_id = f"{v_input.lower()} {n_input.lower()}"
     kw, jahr = datetime.now().isocalendar()[1], datetime.now().isocalendar()[0]
-    
-    assigned_team = None
-    if not df.empty:
-        prev_entries = df[df['Full_ID'] == search_id]
-        if not prev_entries.empty:
-            assigned_team = prev_entries.iloc[0]['Team']
-
-    akt_m = 0
-    if not df.empty:
-        akt_m = df[(df['Full_ID'] == search_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min|Min"))]["Punkte"].sum()
-    
+    assigned_team = df[df['Full_ID'] == search_id].iloc[0]['Team'] if not df.empty and not df[df['Full_ID'] == search_id].empty else None
+    akt_m = df[(df['Full_ID'] == search_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min|Min"))]["Punkte"].sum() if not df.empty else 0
     st.sidebar.metric("Deine Wochen-Punkte (Zeit)", f"{int(akt_m)} / {LIMIT_MINUTEN}")
     
     if assigned_team and assigned_team != team_choice:
@@ -189,42 +140,35 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
             else:
                 auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"])
                 p = 5 if "100" in auswahl else 10 if "200" in auswahl else 15
-                
             confirm = st.checkbox("Ich bestätige meine Angaben.")
             if st.form_submit_button("Eintragen"):
-                if not confirm:
-                    st.error("Bitte Haken setzen!")
-                elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
-                    st.error(f"Limit erreicht! ({int(akt_m)} Pkt. vorhanden)")
+                if not confirm: st.error("Bitte Haken setzen!")
+                elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN: st.error(f"Limit erreicht!")
                 elif worksheet:
                     worksheet.append_row([datetime.now().strftime("%d.%m.%Y"), v_input, n_input, team_choice, "Lesen", auswahl, p])
-                    st.sidebar.success("Gespeichert!")
                     st.cache_resource.clear()
                     st.rerun()
 
-# --- 8. TABELLEN (BEIDE JETZT BEGRENZT) ---
+# --- 8. TABELLEN (PLATZIERUNG + FETT) ---
 col_tab1, col_tab2 = st.columns([1, 1.2])
 with col_tab1:
     st.subheader("🏆 Team-Tabelle (Top 5)", anchor=False)
     ranking_data = get_capped_ranking(df)
-    
     if not ranking_data.empty: 
-        top_5 = ranking_data.head(5).set_index("Team")
-        st.table(top_5.style.format({"Durchschnitt": "{:.2f}"}))
+        # Platzierung anzeigen & Header fett stylen
+        st.table(ranking_data.head(5).set_index("Platz").style.format({"Durchschnitt": "{:.2f}"}))
         if len(ranking_data) > 5:
             with st.expander("Vollständige Tabelle anzeigen"):
-                st.table(ranking_data.iloc[5:].set_index("Team").style.format({"Durchschnitt": "{:.2f}"}))
-    else: st.write("Keine Daten.")
+                st.table(ranking_data.iloc[5:].set_index("Platz").style.format({"Durchschnitt": "{:.2f}"}))
+    else: st.write("Noch keine Daten.")
 
 with col_tab2:
     st.subheader("📜 Letzte Aktivitäten (Top 5)", anchor=False)
     if not df.empty:
-        # Hier ist die Änderung: head(5) statt head(10)
         st.dataframe(df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(5), use_container_width=True, hide_index=True)
         if len(df) > 5:
              with st.expander("Ältere Aktivitäten anzeigen"):
                 st.dataframe(df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].iloc[5:25], use_container_width=True, hide_index=True)
 
 st.markdown("---")
-with st.expander("⚖️ Datenschutz & Impressum"):
-    st.write("**Verantwortlich:** FLVW. Daten werden nur für den Wettbewerb genutzt.")
+with st.expander("⚖️ Datenschutz & Impressum"): st.write("**Verantwortlich:** FLVW. Daten werden nur für den Wettbewerb genutzt.")
