@@ -19,13 +19,13 @@ teams = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchd
 
 # --- SIDEBAR: SPIELERKABINE ---
 st.sidebar.header("👟 Spielerkabine")
-st.sidebar.info("Fair Play geht vor! Seid ehrlich beim Eintragen. [cite: 45, 46]")
+st.sidebar.info("Fair Play geht vor! Seid ehrlich beim Eintragen. ")
 
 with st.sidebar.form("lese_form"):
     team_auswahl = st.selectbox("Team wählen:", teams)
     kind_name = st.text_input("Name des Kindes (intern):")
     
-    # Punkteliste basierend auf dem Lesepass [cite: 56]
+    # Punkteliste exakt nach Lesepass-Tabelle 
     option = st.selectbox("Was wurde erreicht?", [
         "30 min Lesen (2 Pkt)",
         "60 min Lesen (4 Pkt)",
@@ -38,7 +38,7 @@ with st.sidebar.form("lese_form"):
     submit = st.form_submit_button("Ergebnis eintragen")
     
     if submit:
-        # Punktezuordnung laut Entwurf [cite: 56]
+        # Punktezuordnung laut Tabelle 
         pkt_map = {
             "30 min Lesen (2 Pkt)": 2, 
             "60 min Lesen (4 Pkt)": 4,
@@ -64,10 +64,10 @@ with st.sidebar.form("lese_form"):
 df = st.session_state.liga_daten.copy()
 
 def berechne_team_punkte(team_df):
-    # Bonus (Bücher/Rezension) zählt immer voll [cite: 77]
+    # Bonus (Bücher/Rezension) zählt immer voll 
     bonus = team_df[team_df["Typ"] == "Bonus"]["Punkte"].sum()
     
-    # Lese-Minuten werden pro Kind/Woche auf maximal 20 Pkt gedeckelt [cite: 64, 76]
+    # Lese-Minuten werden pro Kind/Woche auf maximal 20 Pkt gedeckelt 
     lese_df = team_df[team_df["Typ"] == "Lesen"]
     if not lese_df.empty:
         wochen_lese_pkt = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum()
@@ -94,9 +94,9 @@ if not df.empty:
 else:
     st.info("Noch keine Ergebnisse. Der Anpfiff ist erfolgt – viel Spaß beim Lesen! [cite: 33]")
 
-# --- INFOS ---
+# --- INFOS AUS DEM LESEPASS ---
 with st.expander("📝 Regeln & Punktesystem"):
     st.write("**Punkte-Regeln:**")
-    st.write("- Lesen (Minuten): Maximal 20 Punkte pro Woche und Kind. [cite: 64, 76]")
-    st.write("- Bücher & Rezensionen: Zählen zusätzlich und sind nicht gedeckelt. [cite: 77]")
-    st.write("- Fair Play: Jede Minute zählt, aber seid ehrlich! [cite: 45, 46, 47]")
+    st.write("- **Lesen (Minuten):** Maximal 20 Punkte pro Woche und Kind. ")
+    st.write("- **Bücher & Rezensionen:** Zählen zusätzlich und sind nicht gedeckelt. ")
+    st.write("- **Fair Play:** Jede Minute zählt, aber seid ehrlich! [cite: 45, 46, 47]")
