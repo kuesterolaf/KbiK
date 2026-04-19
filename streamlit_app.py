@@ -38,7 +38,7 @@ st.markdown("""
 
     /* Header Zentrierung */
     .header-container { text-align: center; width: 100%; }
-    .tight-title { margin-top: -15px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
+    .tight-title { margin-top: -80px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
     .tight-subtitle { margin-top: -10px !important; color: #666 !important; text-align: center; }
 
     /* Metriken Hauptbereich */
