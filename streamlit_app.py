@@ -46,22 +46,22 @@ except Exception as e:
 st.markdown("<h1 style='text-align: center;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- SIDEBAR: EINGABE ---
+# --- SIDEBAR: SPIELERKABINE ---
 st.sidebar.header("👟 Spielerkabine")
 
 with st.sidebar.form("input_form", clear_on_submit=True):
-    # Name als Textfeld
+    # Name eingeben
     eingabe_name = st.text_input("Vorname und Nachname des Kindes:").strip()
     
-    # Team als Dropdown (wie gewünscht)
+    # Team-Dropdown
     team_liste = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
     eingabe_team = st.selectbox("Wähle dein Team:", team_liste)
     
+    # Ergebnis-Auswahl
     ergebnis = st.selectbox("Was wurde heute erreicht?", [
-        "-- Lesezeit --",
+        "-- Bitte wählen --",
         "30 min gelesen (2 Pkt)", 
         "60 min gelesen (4 Pkt)",
-        "-- Buch abgeschlossen --",
         "Buch bis 100 Seiten (5 Pkt)", 
         "Buch bis 200 Seiten (10 Pkt)", 
         "Buch über 200 Seiten (15 Pkt)"
@@ -70,19 +70,35 @@ with st.sidebar.form("input_form", clear_on_submit=True):
     submit = st.form_submit_button("Eintrag speichern")
 
     if submit and eingabe_name:
-        # CHECK: Existiert der Name schon mit einem anderen Team?
-        # Wir vergleichen alles in Kleinbuchstaben, um Tippfehler (Groß/Klein) zu ignorieren
+        # Check: Ist der Name schon einem anderen Team zugeordnet?
         historie = df[df["Kind"].str.lower() == eingabe_name.lower()]
         
-        zugriff_erlaubt = True
+        zugriff_ok = True
         if not historie.empty:
-            festgelegtes_team = historie["Team"].iloc[0]
-            if festgelegtes_team != eingabe_team:
-                st.sidebar.error(f"🚫 Stopp! {eingabe_name} ist bereits im Team **{festgelegtes_team}**. Du kannst nicht für ein anderes Team punkten!")
-                zugriff_erlaubt = False
+            registriertes_team = historie["Team"].iloc[0]
+            if registriertes_team != eingabe_team:
+                st.sidebar.error(f"🚫 {eingabe_name} spielt bereits im Team '{registriertes_team}'!")
+                zugriff_ok = False
         
-        if zugriff_erlaubt:
-            # Punkte-Zuweisung
-            if "30 min" in ergebnis: pkt = 2
-            elif "60 min" in ergebnis: pkt = 4
-            elif "bis 100" in ergebnis: pkt =
+        if zugriff_ok:
+            # Punkte-Logik (Sicher formatiert)
+            pkt = 0
+            if "30 min" in ergebnis:
+                pkt = 2
+            elif "60 min" in ergebnis:
+                pkt = 4
+            elif "bis 100" in ergebnis:
+                pkt = 5
+            elif "bis 200" in ergebnis and "über" not in ergebnis:
+                pkt = 10
+            elif "über 200" in ergebnis:
+                pkt = 15
+            
+            if pkt > 0:
+                neue_zeile = [datetime.now().strftime("%d.%m.%Y"), eingabe_name, eingabe_team, "Lesen", ergebnis, pkt]
+                try:
+                    worksheet.append_row(neue_zeile)
+                    st.sidebar.success(f"✅ Tor für {eingabe_name}!")
+                    st.rerun()
+                except:
+                    st.sidebar.error("
