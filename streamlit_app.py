@@ -5,24 +5,27 @@ from datetime import datetime
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# --- HEADER: LOGOS AUF GLEICHER HÖHE ---
-# Wir nutzen Spalten und ein wenig Padding, um die Logos perfekt auszurichten
-col1, col2, col3 = st.columns([1, 2, 1])
+# --- HEADER: LOGOS AUF EXAKT GLEICHER HÖHE ---
+# Wir nutzen Container, um die Logos sauber zu platzieren
+header_container = st.container()
+with header_container:
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col1:
+        try:
+            # Wir erzwingen eine feste Höhe für die optische Symmetrie
+            st.image("KbiK-Logo.jpg", height=100)
+        except:
+            st.warning("KbiK-Logo.jpg fehlt")
 
-with col1:
-    try:
-        st.image("KbiK-Logo.png", use_container_width=True)
-    except:
-        st.warning("KbiK-Logo.png fehlt auf GitHub")
+    with col3:
+        try:
+            # Gleiche Höhe wie das linke Logo
+            st.image("Logo-FLVW (1).svg", height=100)
+        except:
+            st.warning("Logo-FLVW (1).svg fehlt")
 
-with col3:
-    try:
-        # Das FLVW-Logo wird hier rechtsbündig und passend skaliert
-        st.image("Logo-FLVW (1).svg", use_container_width=True)
-    except:
-        st.warning("Logo-FLVW (1).svg fehlt auf GitHub")
-
-st.markdown("<h1 style='text-align: center;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-top: -50px;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center;'>Die offizielle Sommer-Leseliga des FLVW</h3>", unsafe_allow_html=True)
 st.markdown("---")
 
@@ -36,12 +39,13 @@ teams = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchd
 
 # --- SIDEBAR: SPIELERKABINE ---
 st.sidebar.header("👟 Spielerkabine")
-st.sidebar.info("Fair Play geht vor! Seid ehrlich beim Eintragen.")
+st.sidebar.info("Fair Play geht vor! Seid ehrlich beim Einreichung von Ergebnissen. [cite: 166, 167]")
 
 with st.sidebar.form("lese_form"):
     team_auswahl = st.selectbox("Team wählen:", teams)
     kind_name = st.text_input("Name des Kindes (intern):")
     
+    # Punkteliste exakt nach Lesepass-Entwurf [cite: 177]
     option = st.selectbox("Was wurde erreicht?", [
         "30 min Lesen (2 Pkt)",
         "60 min Lesen (4 Pkt)",
@@ -79,7 +83,7 @@ def berechne_team_punkte(team_df):
     bonus = team_df[team_df["Typ"] == "Bonus"]["Punkte"].sum()
     lese_df = team_df[team_df["Typ"] == "Lesen"]
     if not lese_df.empty:
-        # Deckelung bei 20 Punkten pro Woche laut Lesepass
+        # Deckelung bei 20 Punkten pro Woche 
         wochen_lese_pkt = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum()
     else:
         wochen_lese_pkt = 0
@@ -100,7 +104,7 @@ with main_col:
         tabelle_df.index += 1
         st.table(tabelle_df)
     else:
-        st.info("Noch keine Ergebnisse. Der Anpfiff ist erfolgt – viel Spaß beim Lesen!")
+        st.info("Noch keine Ergebnisse. Der Anpfiff ist erfolgt!")
 
 with side_col:
     st.header("📊 Statistik")
@@ -116,6 +120,6 @@ with side_col:
 st.markdown("---")
 with st.expander("📝 Regeln & Punktesystem"):
     st.write("**Punkte-Regeln:**")
-    st.write("- **Lesen (Minuten):** Maximal 20 Punkte pro Woche und Kind.")
-    st.write("- **Bücher & Rezensionen:** Zählen zusätzlich und sind nicht gedeckelt.")
-    st.write("- **Fair Play:** Jede Minute zählt, aber seid ehrlich!")
+    st.write("- **Lesen (Minuten):** Maximal 20 Punkte pro Woche und Kind. ")
+    st.write("- **Bücher & Rezensionen:** Zählen zusätzlich und sind nicht gedeckelt. [cite: 198]")
+    st.write("- **Fair Play:** Jede Minute zählt, aber seid ehrlich! [cite: 166, 168]")
