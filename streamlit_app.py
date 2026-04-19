@@ -74,14 +74,12 @@ st.markdown("---")
 # --- SIDEBAR: SPIELER KABINE ---
 st.sidebar.header("👟 Spieler Kabine")
 
-# NEU: Die Info-Box für die Kids
 st.sidebar.info("""
 **So sammelst du Punkte:**
 1. Namen & Stützpunkt eingeben.
 2. Lesezeit oder Buch wählen.
-3. 'Eintragen' klicken.
-        
-Deine Punkte zählen sofort für deinen Stützpunkt!
+3. Haken bei der Bestätigung setzen.
+4. 'Eintragen' klicken.
 """)
 
 v_name = st.sidebar.text_input("Vorname:", key="v_final").strip()
@@ -92,7 +90,7 @@ t_liste = [
     "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arnsberg/Soest", "Beckum", 
     "Bielefeld", "Bochum", "Detmold", "Dortmund", "Gelsenkirchen", 
     "Gütersloh", "Hagen", "Herford", "Herne", "Hochsauerlandkreis", 
-    "Höxter", "Lemgo", "Lippstadt", "Minden/Lübbecke", "Lüdenscheid/Iserlohn", 
+    "Höxter", "Lemgo", "Lippstadt", "Lübbecke/Minden", "Lüdenscheid/Iserlohn", 
     "Münster I", "Münster II", "Olpe", "Paderborn", "Recklinghausen", 
     "Siegen/Wittgenstein", "Steinfurt", "Tecklenburg", "Unna/Hamm"
 ]
@@ -126,8 +124,13 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
                 auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"], key="b_final")
                 p = 5 if "100" in auswahl else 10 if "bis 200" in auswahl else 15
 
+            # NEU: Die Sicherheitsabfrage
+            confirm = st.checkbox("Ich bestätige, dass meine Angaben stimmen.")
+
             if st.form_submit_button("Eintragen"):
-                if kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
+                if not confirm:
+                    st.error("Bitte setze erst den Haken bei der Bestätigung!")
+                elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
                     st.error("Wochenlimit erreicht!")
                 elif worksheet:
                     try:
@@ -138,6 +141,8 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
                         st.rerun()
                     except Exception:
                         st.sidebar.error("Fehler beim Speichern!")
+
+        st.sidebar.caption("Tipp: Bei Fehlern melde dich bitte direkt bei deinem Trainer.")
 
 # --- HAUPTBEREICH ANZEIGE ---
 col1, col2 = st.columns([1, 1.2])
@@ -159,5 +164,4 @@ with col2:
         st.write("Warte auf erste Einträge...")
 
 st.markdown("---")
-st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler des Stützpunktes geteilt, damit es fair bleibt!")
-st.info("ℹ️ Datenschutz: Nur die Teamleistung zählt, daher werden keine Spielernamen angezeigt!")
+st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler geteilt.")
