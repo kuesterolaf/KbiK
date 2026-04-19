@@ -1,4 +1,4 @@
-iimport streamlit as st
+import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
@@ -14,10 +14,8 @@ st.markdown("---")
 # --- VERBINDUNG ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# DATEN LADEN
 def load_data():
     try:
-        # Wir zwingen die App, das Sheet neu zu lesen
         data = conn.read(ttl="0s")
         if data is None or data.empty:
             return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
@@ -48,27 +46,22 @@ with st.sidebar.form("lese_form", clear_on_submit=True):
             "Buch über 201 Seiten (12 Pkt)": 12, "Lieblingsbuch + Mini-Rezension (5 Pkt)": 5
         }
         
-        neuer_eintrag = {
+        neuer_eintrag = pd.DataFrame([{
             "Datum": datetime.now().strftime("%Y-%W"),
-            "Kind": kind_name, 
-            "Team": team_auswahl,
+            "Kind": kind_name, "Team": team_auswahl,
             "Typ": "Lesen" if "min" in option else "Bonus",
-            "Details": option, 
-            "Punkte": pkt_map[option]
-        }
+            "Details": option, "Punkte": pkt_map[option]
+        }])
         
-        # NEUE SPEICHER-METHODE:
         try:
-            # Wir fügen die Zeile direkt zum bestehenden DataFrame hinzu
-            df_updated = pd.concat([df_aktuell, pd.DataFrame([neuer_eintrag])], ignore_index=True)
-            # Wir überschreiben das Sheet mit dem kompletten neuen Satz
+            # Wir hängen die neuen Daten an die alten an
+            df_updated = pd.concat([df_aktuell, neuer_eintrag], ignore_index=True)
+            # Speichern im Google Sheet
             conn.update(data=df_updated)
-            st.sidebar.success("TOR! Gespeichert.")
-            # Seite neu laden, um Daten aus dem Sheet zu ziehen
+            st.sidebar.success("TOR! Im Google Sheet gespeichert.")
             st.rerun()
-        except Exception as e:
-            st.sidebar.error("Fehler beim Speichern im Sheet!")
-            st.sidebar.info("Prüfe, ob das Sheet wirklich auf 'Jeder mit Link = Editor' steht.")
+        except:
+            st.sidebar.error("Konnte nicht im Sheet speichern. Prüfe 'Editor'-Rechte!")
 
 # --- BERECHNUNG ---
 def berechne_punkte(team_df):
@@ -102,3 +95,8 @@ with col_stat:
     st.metric("Punkte insgesamt", f"{gesamt}")
     st.progress(min(gesamt / 1000, 1.0))
     st.write(f"Noch {max(1000 - gesamt, 0)} Punkte bis zum Ziel!")
+
+st.markdown("---")
+with st.expander("📝 Regeln"):
+    st.write("- Lesezeit: Max. 20 Pkt/Woche pro Kind.")
+    st.write("- Bücher zählen immer voll.")
