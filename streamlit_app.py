@@ -6,8 +6,6 @@ from google.oauth2.service_account import Credentials
 
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
-st.subheader("Die Sommer-Leseliga des FLVW") # Hier fügen wir den Untertitel ein
-st.markdown("---")
 LIMIT_MINUTEN = 20
 SPALTEN = ["Datum", "Vorname", "Nachname", "Team", "Typ", "Details", "Punkte"]
 
@@ -42,7 +40,6 @@ def load_data():
     except Exception:
         return pd.DataFrame(columns=SPALTEN), None
 
-# Daten laden
 df, worksheet = load_data()
 
 # --- LOGIK: TEAM-RANKING ---
@@ -71,14 +68,25 @@ def get_capped_ranking(df_full):
 
 # --- UI ---
 st.title("⚽ Kicken beginnt im Kopf")
+st.subheader("Die Sommer-Leseliga des FLVW", anchor=False) # anchor=False entfernt das Kettensymbol
 st.markdown("---")
 
 # SIDEBAR
-st.sidebar.header("👟 Spieler-Kabine")
-v_name = st.sidebar.text_input("Vorname:", key="v_input").strip()
-n_name = st.sidebar.text_input("Nachname:", key="n_input").strip()
-t_liste = ["-- Bitte wählen --", "Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
-team_choice = st.sidebar.selectbox("Dein Team:", t_liste, key="t_select")
+st.sidebar.header("👟 Spieler Kabine")
+v_name = st.sidebar.text_input("Vorname:", key="v_final").strip()
+n_name = st.sidebar.text_input("Nachname:", key="n_final").strip()
+
+# Die 28 Stützpunkte aus der Auslosung
+t_liste = [
+    "-- Bitte wählen --", 
+    "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arnsberg/Soest", "Beckum", 
+    "Bielefeld", "Bochum", "Detmold", "Dortmund", "Gelsenkirchen", 
+    "Gütersloh", "Hagen", "Herford", "Herne", "Hochsauerlandkreis", 
+    "Höxter", "Lemgo", "Lippstadt", "Lübbecke/Minden", "Lüdenscheid/Iserlohn", 
+    "Münster I", "Münster II", "Olpe", "Paderborn", "Recklinghausen", 
+    "Siegen/Wittgenstein", "Steinfurt", "Tecklenburg", "Unna/Hamm"
+]
+team_choice = st.sidebar.selectbox("Dein Stützpunkt:", t_liste, key="t_final")
 
 if v_name and n_name and team_choice != "-- Bitte wählen --":
     current_id = f"{v_name.lower()} {n_name.lower()}"
@@ -88,7 +96,7 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
     if not df.empty and 'Full_ID' in df.columns:
         existing = df[df['Full_ID'] == current_id]
         if not existing.empty and existing['Team'].iloc[0] != team_choice:
-            st.sidebar.error(f"Du bist bereits bei '{existing['Team'].iloc[0]}' gemeldet!")
+            st.sidebar.error(f"Du bist bereits für '{existing['Team'].iloc[0]}' registriert!")
             can_proceed = False
 
     if can_proceed:
@@ -98,20 +106,19 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
             akt_m = df[(df['Full_ID'] == current_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min"))]["Punkte"].sum()
         
         st.sidebar.metric("Deine Minuten-Punkte (KW)", f"{int(akt_m)} / {LIMIT_MINUTEN}")
-        kat = st.sidebar.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"], key="k_radio")
+        kat = st.sidebar.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"], key="k_final")
         
-        # FORMULAR (Hier auf Einrückung achten!)
         with st.sidebar.form("entry_form"):
             if kat == "Lesezeit (Minuten)":
-                auswahl = st.selectbox("Dauer:", ["30 min gelesen (2 Pkt)", "60 min gelesen (4 Pkt)"], key="m_select")
+                auswahl = st.selectbox("Dauer:", ["30 min gelesen (2 Pkt)", "60 min gelesen (4 Pkt)"], key="m_final")
                 p = 2 if "30" in auswahl else 4
             else:
-                auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"], key="b_select")
+                auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"], key="b_final")
                 p = 5 if "100" in auswahl else 10 if "bis 200" in auswahl else 15
 
             if st.form_submit_button("Eintragen"):
                 if kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
-                    st.error("Wochenlimit Lesezeit erreicht! Es werden keine weiteren Punkte addiert.")
+                    st.error("Wochenlimit erreicht!")
                 elif worksheet:
                     try:
                         heute = datetime.now().strftime("%d.%m.%Y")
@@ -126,7 +133,7 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
 col1, col2 = st.columns([1, 1.2])
 
 with col1:
-    st.subheader("🏆 Team-Tabelle")
+    st.subheader("🏆 Team-Tabelle", anchor=False)
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty:
         st.table(ranking_data.set_index("Team").style.format({"Durchschnitt": "{:.2f}"}))
@@ -134,13 +141,12 @@ with col1:
         st.info("Noch keine Ergebnisse.")
 
 with col2:
-    st.subheader("📜 Letzte Aktivitäten")
+    st.subheader("📜 Letzte Aktivitäten", anchor=False)
     if not df.empty:
-        # Anzeige der letzten 10 Einträge (Datenschutz-konform)
         hist_df = df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(10)
         st.dataframe(hist_df, use_container_width=True, hide_index=True)
     else:
         st.write("Warte auf erste Einträge...")
 
 st.markdown("---")
-st.info("ℹ️ Team-Power: Punkte werden durch die Anzahl der Spieler geteilt. Es werden aus Datenschutzgründen nur die Teams angezeigt.")
+st.info("ℹ️ Team-Power: Punkte werden durch die Anzahl der Spieler des Stützpunktes geteilt. Spielernamen werden aus Datenschutzgründen nicht angezeigt.")
