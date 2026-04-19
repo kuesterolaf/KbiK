@@ -22,7 +22,7 @@ st.markdown("""
         color: white !important; 
     }
     
-    /* FIX: Metrik-Box in der Sidebar transparent */
+    /* Metrik in Sidebar transparent */
     [data-testid="stSidebar"] [data-testid="stMetric"] {
         background-color: transparent !important;
         border: none !important;
@@ -36,41 +36,47 @@ st.markdown("""
         color: #31333F !important; 
     }
 
-    /* ZENTRIERUNG für den Header-Bereich */
+    /* Zentrierung für Header */
     .header-container { text-align: center; width: 100%; }
     .tight-title { margin-top: -15px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
     .tight-subtitle { margin-top: -10px !important; color: #666 !important; text-align: center; }
 
+    /* --- DER "FESTE" BUTTON FIX --- */
+    /* Wir definieren den Button als statisches Element ohne Schnickschnack */
+    [data-testid="stSidebar"] button {
+        background-color: #ffffff !important;
+        color: #E31E24 !important;
+        border: 2px solid #31333F !important; /* Dunkler Rand für Sichtbarkeit */
+        border-radius: 5px !important;
+        height: 3em !important;
+        width: 100% !important;
+        opacity: 1 !important;
+    }
+
+    /* Wir zwingen die Schriftfarbe in JEDEM Zustand auf Rot */
+    [data-testid="stSidebar"] button p,
+    [data-testid="stSidebar"] button div,
+    [data-testid="stSidebar"] button span {
+        color: #E31E24 !important;
+        font-weight: bold !important;
+    }
+
+    /* Diese Sektion überschreibt alle Streamlit-Hover-Effekte */
+    [data-testid="stSidebar"] button:hover, 
+    [data-testid="stSidebar"] button:active, 
+    [data-testid="stSidebar"] button:focus {
+        background-color: #ffffff !important;
+        color: #E31E24 !important;
+        border: 2px solid #31333F !important;
+        box-shadow: none !important;
+    }
+    
     /* Metriken im Hauptbereich */
     [data-testid="stMain"] [data-testid="stMetric"] { 
         background-color: #ffffff; 
         padding: 15px; 
         border-radius: 10px; 
         border: 1px solid #f0f2f6; 
-    }
-    [data-testid="stMain"] [data-testid="stMetric"] * { color: #31333F !important; }
-    
-    /* --- ULTIMATIVER BUTTON FIX --- */
-    /* Wir erzwingen die Textfarbe für den Absatz (p) im Button */
-    [data-testid="stSidebar"] div.stButton > button {
-        background-color: white !important;
-        border: 1px solid white !important;
-        width: 100% !important;
-        border-radius: 5px !important;
-        height: 3em !important;
-    }
-
-    [data-testid="stSidebar"] div.stButton > button p {
-        color: #E31E24 !important; /* Zwingt den Text auf Rot */
-        font-weight: bold !important;
-    }
-
-    /* Hover-Effekt: Etwas dunkleres Weiß, Text bleibt Rot */
-    [data-testid="stSidebar"] div.stButton > button:hover {
-        background-color: #f0f2f6 !important;
-    }
-    [data-testid="stSidebar"] div.stButton > button:hover p {
-        color: #E31E24 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -123,7 +129,7 @@ def get_capped_ranking(df_full):
     stats['Durchschnitt'] = (stats['Gesamt'] / stats['Spieler']).round(2)
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
-# --- 5. HAUPTBEREICH: HEADER ---
+# --- 5. HAUPTBEREICH: ZENTRIERTER HEADER ---
 col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
 with col_l2:
     if os.path.exists("KbiK-Logo.jpg"):
