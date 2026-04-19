@@ -6,7 +6,7 @@ from datetime import datetime
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽")
 
 st.title("⚽ Kicken beginnt im Kopf")
-st.subheader("Die offizielle Sommer-Leseliga")
+st.subheader("Die offizielle Sommer-Leseliga des FLVW")
 
 # --- DATEN-STRUKTUR ---
 if 'liga_daten' not in st.session_state:
