@@ -6,6 +6,9 @@ from google.oauth2.service_account import Credentials
 
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
+st.title("⚽ Kicken beginnt im Kopf")
+st.subheader("Die Sommer-Leseliga des FLVW") # Hier fügen wir den Untertitel ein
+st.markdown("---")
 LIMIT_MINUTEN = 20
 SPALTEN = ["Datum", "Vorname", "Nachname", "Team", "Typ", "Details", "Punkte"]
 
