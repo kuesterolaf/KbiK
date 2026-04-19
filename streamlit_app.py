@@ -72,7 +72,7 @@ st.title("⚽ Kicken beginnt im Kopf")
 st.markdown("---")
 
 # SIDEBAR
-st.sidebar.header("👟 Spieler Kabine")
+st.sidebar.header("👟 Spieler-Kabine")
 v_name = st.sidebar.text_input("Vorname:", key="v_input").strip()
 n_name = st.sidebar.text_input("Nachname:", key="n_input").strip()
 t_liste = ["-- Bitte wählen --", "Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
@@ -109,7 +109,7 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
 
             if st.form_submit_button("Eintragen"):
                 if kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
-                    st.error("Wochenlimit erreicht!")
+                    st.error("Wochenlimit Lesezeit erreicht! Es werden keine weiteren Punkte addiert.")
                 elif worksheet:
                     try:
                         heute = datetime.now().strftime("%d.%m.%Y")
@@ -141,4 +141,4 @@ with col2:
         st.write("Warte auf erste Einträge...")
 
 st.markdown("---")
-st.info("ℹ️ Team-Power: Punkte werden durch die Anzahl der Spieler geteilt.")
+st.info("ℹ️ Team-Power: Punkte werden durch die Anzahl der Spieler geteilt. Es werden aus Datenschutzgründen nur die Teams angezeigt.")
