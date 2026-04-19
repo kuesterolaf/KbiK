@@ -160,3 +160,4 @@ with col2:
 
 st.markdown("---")
 st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler des Stützpunktes geteilt, damit es fair bleibt!")
+st.info("ℹ️ Datenschutz: Nur die Teamleistung zählt, daher werden keine Spielernamen angezeigt!")
