@@ -14,7 +14,7 @@ with header_container:
     with col1:
         try:
             # Wir erzwingen eine feste Höhe für die optische Symmetrie
-            st.image("KbiK-Logo.jpg", height=100)
+            st.image("KbiK-Logo.png", height=100)
         except:
             st.warning("KbiK-Logo.jpg fehlt")
 
