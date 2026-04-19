@@ -11,9 +11,9 @@ col1, col2, col3 = st.columns([1, 2, 1])
 
 with col1:
     try:
-        st.image("KbiK-Logo.jpg", use_container_width=True)
+        st.image("KbiK-Logo.png", use_container_width=True)
     except:
-        st.warning("KbiK-Logo.jpg fehlt auf GitHub")
+        st.warning("KbiK-Logo.png fehlt auf GitHub")
 
 with col3:
     try:
