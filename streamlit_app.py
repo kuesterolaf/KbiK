@@ -72,7 +72,7 @@ st.subheader("Die Sommer-Leseliga des FLVW", anchor=False)
 st.markdown("---")
 
 # --- SIDEBAR: SPIELER KABINE ---
-st.sidebar.header("👟 Spieler Kabine")
+st.sidebar.header("👟 Spieler-Kabine")
 
 st.sidebar.info("""
 **So sammelst du Punkte:**
@@ -90,7 +90,7 @@ t_liste = [
     "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arnsberg/Soest", "Beckum", 
     "Bielefeld", "Bochum", "Detmold", "Dortmund", "Gelsenkirchen", 
     "Gütersloh", "Hagen", "Herford", "Herne", "Hochsauerlandkreis", 
-    "Höxter", "Lemgo", "Lippstadt", "Lübbecke/Minden", "Lüdenscheid/Iserlohn", 
+    "Höxter", "Lemgo", "Lippstadt", "Minden/Lübbecke", "Lüdenscheid/Iserlohn", 
     "Münster I", "Münster II", "Olpe", "Paderborn", "Recklinghausen", 
     "Siegen/Wittgenstein", "Steinfurt", "Tecklenburg", "Unna/Hamm"
 ]
@@ -165,3 +165,5 @@ with col2:
 
 st.markdown("---")
 st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler geteilt.")
+st.info("ℹ️ Datenschutz: Nur die Team-Leistung zählt. Daher werden Spielernamen nicht angezeigt!")
+st.info("ℹ️ Offene Fragen: Bitte wende dich per Mail an Olaf Küster - olaf.kuester(at)web.de")
