@@ -91,21 +91,32 @@ def get_capped_ranking(df_full):
     
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
-# --- UI HAUPTBEREICH: ZENTRIERTER HEADER ---
-# Wir erstellen 3 Spalten, das Logo kommt in die mittlere (col_logo2)
-col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
+# --- UI HAUPTBEREICH: OPTIMIERTER HEADER ---
+# Wir nutzen CSS, um den Container des Bildes zu kontrollieren
+st.markdown("""
+    <style>
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        padding: 0px;
+        margin-bottom: -30px; /* Zieht den Text noch näher ran */
+    }
+    .logo-container img {
+        max-width: 280px; /* Hier kannst du die Größe des Logos genau steuern */
+        height: auto;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-with col_logo2:
-    if os.path.exists("KbiK-Logo.png"):
-        st.image("KbiK-Logo.png", use_container_width=True)
-    else:
-        st.markdown("<h1 style='text-align: center;'>⚽</h1>", unsafe_allow_html=True)
+# Das Logo wird jetzt in einem zentrierten HTML-Div platziert
+st.markdown(
+    f'<div class="logo-container"><img src="data:image/jpeg;base64,{base64_logo}"></div>', 
+    unsafe_allow_html=True
+)
 
-# Titel und Subtitel zentriert darunter
-st.markdown('<div class="centered-header">', unsafe_allow_html=True)
-st.markdown('<h1 style="text-align: center; margin-top: -100px;">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
-st.markdown('<h3 style="text-align: center; color: #666; margin-top: -50px;">Die Sommer-Leseliga des FLVW</h3>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+# Titel und Subtitel
+st.markdown('<h1 class="centered-header tight-title">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
+st.markdown('<h3 class="centered-header tight-subtitle">Die Sommer-Leseliga des FLVW</h3>', unsafe_allow_html=True)
 
 st.markdown("---")
 
