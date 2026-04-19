@@ -1,35 +1,44 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
+import gspread
+from google.oauth2.service_account import Credentials
 
 # --- SETUP ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", layout="wide")
 
-# MANUELLE VERBINDUNG (Zwingt Streamlit, die Secrets zu nutzen)
-@st.cache_resource
-def get_connection():
-    # Wir ziehen uns die Daten händisch aus den Secrets
+# VERBINDUNG HERSTELLEN (Die robuste Methode)
+def get_gspread_client():
     s = st.secrets["connections"]["gsheets"]
-    return st.connection("gsheets", 
-        type=GSheetsConnection,
-        spreadsheet=s["spreadsheet"],
-        project_id=s["project_id"],
-        private_key_id=s["private_key_id"],
-        private_key=s["private_key"],
-        client_email=s["client_email"],
-        client_id=s["client_id"],
-        auth_uri=s["auth_uri"],
-        token_uri=s["token_uri"],
-        auth_provider_x509_cert_url=s["auth_provider_x509_cert_url"],
-        client_x509_cert_url=s["client_x509_cert_url"]
+    credentials = Credentials.from_service_account_info(
+        {
+            "type": s["type"],
+            "project_id": s["project_id"],
+            "private_key_id": s["private_key_id"],
+            "private_key": s["private_key"],
+            "client_email": s["client_email"],
+            "client_id": s["client_id"],
+            "auth_uri": s["auth_uri"],
+            "token_uri": s["token_uri"],
+            "auth_provider_x509_cert_url": s["auth_provider_x509_cert_url"],
+            "client_x509_cert_url": s["client_x509_cert_url"],
+        },
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
     )
+    return gspread.authorize(credentials)
 
 try:
-    conn = get_connection()
-    df = conn.read(ttl="0s")
+    client = get_gspread_client()
+    # Öffnet das Sheet über die URL aus deinen Secrets
+    sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    sh = client.open_by_url(sheet_url)
+    worksheet = sh.get_worksheet(0) # Das erste Tabellenblatt
+    
+    # Daten laden
+    data = worksheet.get_all_records()
+    df = pd.DataFrame(data)
 except Exception as e:
-    st.error("Verbindungsfehler!")
+    st.error("Verbindung zum Google Sheet gescheitert!")
     st.code(str(e))
     df = pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
@@ -45,24 +54,24 @@ with st.sidebar.form("input_form", clear_on_submit=True):
 
     if submit and name:
         pkt = 2 if "30" in ergebnis else 4 if "60" in ergebnis else 5
-        neuer_eintrag = pd.DataFrame([{
-            "Datum": datetime.now().strftime("%d.%m.%Y"),
-            "Kind": name, "Team": team, "Typ": "Lesen", "Details": ergebnis, "Punkte": pkt
-        }])
+        # Neue Zeile als Liste (muss zur Reihenfolge im Sheet passen!)
+        neue_zeile = [datetime.now().strftime("%d.%m.%Y"), name, team, "Lesen", ergebnis, pkt]
         
         try:
-            df_aktualisiert = pd.concat([df, neuer_eintrag], ignore_index=True)
-            # Hier schreiben wir explizit mit der erzwungenen Verbindung
-            conn.update(data=df_aktualisiert)
-            st.sidebar.success("✅ Gespeichert!")
+            worksheet.append_row(neue_zeile)
+            st.sidebar.success("✅ Erfogreich im Google Sheet gespeichert!")
             st.rerun()
         except Exception as e:
-            st.sidebar.error("❌ Fehler!")
+            st.sidebar.error("❌ Schreibfehler!")
             st.sidebar.code(str(e))
 
 # --- TABELLE ---
 if not df.empty:
-    st.table(df.groupby("Team")["Punkte"].sum().reset_index().sort_values("Punkte", ascending=False))
+    st.subheader("🏆 Aktuelle Tabelle")
+    # Sicherstellen, dass Punkte Zahlen sind
+    df["Punkte"] = pd.to_numeric(df["Punkte"], errors='coerce').fillna(0)
+    ranking = df.groupby("Team")["Punkte"].sum().reset_index().sort_values("Punkte", ascending=False)
+    st.table(ranking)
     st.dataframe(df, use_container_width=True)
 else:
-    st.info("Noch keine Daten vorhanden.")
+    st.info("Noch keine Daten im Sheet gefunden.")
