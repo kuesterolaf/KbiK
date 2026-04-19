@@ -6,20 +6,22 @@ from datetime import datetime
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# Header
-st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-weight: bold;'>Die offizielle Sommer-Leseliga des FLVW</p>", unsafe_allow_html=True)
-st.markdown("---")
+# Verbindung erzwingen (NUR über den Service Account)
+# Falls dies fehlschlägt, liegt ein Tippfehler in den Secrets vor
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+except Exception as e:
+    st.error(f"Verbindungsfehler: Bitte prüfe die Secrets. Details: {e}")
 
-# Verbindung
-conn = st.connection("gsheets", type=GSheetsConnection)
-
+# Daten laden mit Cache-Deaktivierung
 def load_data():
     try:
-        # Wir lesen das Sheet ohne Cache (ttl=0), um immer live zu sein
-        return conn.read(ttl="0s")
-    except Exception as e:
-        st.error(f"Fehler beim Laden der Daten: {e}")
+        # Falls das Sheet komplett leer ist, erstellen wir ein Grundgerüst
+        data = conn.read(ttl="0s")
+        if data is None or data.empty:
+            return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
+        return data
+    except Exception:
         return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
 df_aktuell = load_data()
