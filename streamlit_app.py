@@ -6,28 +6,26 @@ from datetime import datetime
 # --- SETUP ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", layout="wide")
 
-# --- DIAGNOSE-BOX ---
-with st.expander("System-Check (nur für Fehlersuche)"):
-    if "connections" in st.secrets:
-        st.write("✅ Bereich 'connections' gefunden.")
-        if "gsheets" in st.secrets["connections"]:
-            st.write(f"✅ 'gsheets' Konfiguration vorhanden.")
-            st.write(f"Bot-Email: {st.secrets['connections']['gsheets'].get('client_email', 'FEHLT')}")
+# --- SYSTEM-CHECK (Expander) ---
+with st.expander("System-Status prüfen"):
+    if "connections" in st.secrets and "gsheets" in st.secrets["connections"]:
+        st.success(f"✅ Bot erkannt: {st.secrets['connections']['gsheets'].get('client_email')}")
     else:
-        st.error("❌ 'connections' Bereich in den Secrets fehlt!")
+        st.error("❌ Secrets nicht gefunden oder falsch formatiert!")
 
-# VERBINDUNG
+# VERBINDUNG AUFBAUEN
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
+    # Daten lesen (Wichtig: ttl=0 damit wir immer frische Daten haben)
     df = conn.read(ttl="0s")
 except Exception as e:
-    st.error("Verbindungsfehler")
+    st.error("Verbindung zum Sheet fehlgeschlagen")
     st.code(str(e))
     df = pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
 st.title("⚽ Kicken beginnt im Kopf")
 
-# --- EINGABE ---
+# --- SEITENLEISTE: EINGABE ---
 st.sidebar.header("👟 Spielerkabine")
 with st.sidebar.form("spiel_form", clear_on_submit=True):
     name = st.text_input("Name des Kindes:")
@@ -36,24 +34,39 @@ with st.sidebar.form("spiel_form", clear_on_submit=True):
     submit = st.form_submit_button("Eintragen")
 
     if submit and name:
+        # Punkte zuweisen
         pkt = 2 if "30" in ergebnis else 4 if "60" in ergebnis else 5
+        
+        # Neuen Eintrag als DataFrame erstellen
         neuer_eintrag = pd.DataFrame([{
             "Datum": datetime.now().strftime("%d.%m.%Y"),
-            "Kind": name, "Team": team, "Typ": "Lesen", "Details": ergebnis, "Punkte": pkt
+            "Kind": name,
+            "Team": team,
+            "Typ": "Lesen",
+            "Details": ergebnis,
+            "Punkte": pkt
         }])
         
         try:
+            # DATEN ANFÜGEN & HOCHLADEN
+            # Wir nutzen hier .update() und steuern gezielt "Sheet1" an
             df_neu = pd.concat([df, neuer_eintrag], ignore_index=True)
-            conn.update(data=df_neu)
-            st.sidebar.success("✅ Gespeichert!")
-            st.rerun()
+            conn.update(worksheet="Sheet1", data=df_neu)
+            
+            st.sidebar.success("✅ Erfogreich gespeichert!")
+            st.rerun() # App neu laden um Tabelle zu aktualisieren
         except Exception as e:
-            st.sidebar.error("Schreibfehler!")
+            st.sidebar.error("❌ Schreibfehler!")
             st.sidebar.code(str(e))
 
-# --- TABELLE ---
+# --- HAUPTBEREICH: TABELLE ---
 st.header("🏆 Aktueller Spielstand")
 if not df.empty:
-    st.dataframe(df, use_container_width=True)
+    # Ranking berechnen
+    ranking = df.groupby("Team")["Punkte"].sum().reset_index().sort_values("Punkte", ascending=False)
+    st.table(ranking)
+    
+    with st.expander("Alle Details anzeigen"):
+        st.dataframe(df, use_container_width=True)
 else:
-    st.info("Noch keine Daten vorhanden.")
+    st.info("Noch keine Einträge vorhanden. Sei der Erste!")
