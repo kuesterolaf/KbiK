@@ -36,7 +36,7 @@ def load_data():
             df['Jahr'] = df['Datum_dt'].dt.isocalendar().year
             df["Punkte"] = pd.to_numeric(df["Punkte"], errors='coerce').fillna(0)
             if "Vorname" in df.columns and "Nachname" in df.columns:
-                df['Full_Name_Lower'] = df['Vorname'].astype(str).str.lower() + " " + df['Nachname'].astype(str).str.lower()
+                df['Full_ID'] = df['Vorname'].astype(str).str.lower() + " " + df['Nachname'].astype(str).str.lower()
         return df, ws
     except Exception as e:
         st.error(f"Fehler beim Laden: {e}")
@@ -49,9 +49,7 @@ def get_capped_ranking(df_full):
     if df_full.empty or "Vorname" not in df_full.columns:
         return pd.DataFrame(columns=["Team", "Durchschnitt", "Spieler"])
     
-    # Kind-ID erstellen für fairen Vergleich
     df_full['Kind_ID'] = df_full['Vorname'].astype(str) + " " + df_full['Nachname'].astype(str)
-    
     df_min = df_full[df_full["Details"].str.contains("min", na=False)].copy()
     df_extra = df_full[~df_full["Details"].str.contains("min", na=False)].copy()
     
@@ -83,38 +81,52 @@ team = st.sidebar.selectbox("Dein Team:", t_liste)
 
 if v_name and n_name and team != "-- Bitte wählen --":
     full_id = f"{v_name.lower()} {n_name.lower()}"
-    
-    # Stand berechnen
     kw, jahr = datetime.now().isocalendar()[1], datetime.now().isocalendar()[0]
+    
     akt_m = 0
-    if not df.empty and 'Full_Name_Lower' in df.columns:
-        akt_m = df[(df['Full_Name_Lower'] == full_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min"))]["Punkte"].sum()
+    if not df.empty and 'Full_ID' in df.columns:
+        akt_m = df[(df['Full_ID'] == full_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min"))]["Punkte"].sum()
     
-    st.sidebar.metric("Deine Minuten-Punkte (KW)", f"{int(akt_m)} / {LIMIT_MINUTEN}")
+    st.sidebar.metric("Minuten-Punkte (KW)", f"{int(akt_m)} / {LIMIT_MINUTEN}")
     
-    # DYNAMISCHES FORMULAR
     with st.sidebar.form("entry_form"):
         kat = st.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"])
         
-        # Hier findet die dynamische Auswahl statt
         if kat == "Lesezeit (Minuten)":
-            auswahl = st.selectbox("Wie lange hast du gelesen?", ["30 min gelesen (2 Pkt)", "60 min gelesen (4 Pkt)"])
+            auswahl = st.selectbox("Dauer:", ["30 min gelesen (2 Pkt)", "60 min gelesen (4 Pkt)"])
             p = 2 if "30" in auswahl else 4
         else:
-            auswahl = st.selectbox("Welches Buch war es?", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"])
+            auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"])
             p = 5 if "100" in auswahl else 10 if "bis 200" in auswahl else 15
 
         if st.form_submit_button("Eintragen"):
             if kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
-                st.error(f"Wochenlimit! Nur noch {int(LIMIT_MINUTEN - akt_m)} Pkt möglich.")
+                st.error("Wochenlimit erreicht!")
             elif worksheet:
                 try:
                     heute = datetime.now().strftime("%d.%m.%Y")
                     worksheet.append_row([heute, v_name, n_name, team, "Lesen", auswahl, p])
-                    st.sidebar.success("Super! Gespeichert.")
+                    st.sidebar.success("Gespeichert!")
                     st.rerun()
                 except Exception as e:
                     st.sidebar.error(f"Fehler: {e}")
 
 # --- ANZEIGE ---
-c1, c2 = st.columns(
+c1, c2 = st.columns([1, 1.2])
+
+with c1:
+    st.subheader("🏆 Team-Tabelle")
+    ranking = get_capped_ranking(df)
+    if not ranking.empty:
+        st.table(ranking.set_index("Team").style.format({"Durchschnitt": "{:.2f}"}))
+    else:
+        st.info("Noch keine Ergebnisse.")
+
+with c2:
+    st.subheader("📜 Letzte Aktivitäten")
+    if not df.empty:
+        disp = df.iloc[::-1][["Datum", "Vorname", "Team", "Details", "Punkte"]].head(10)
+        st.dataframe(disp, use_container_width=True, hide_index=True)
+
+st.markdown("---")
+st.info("ℹ️ **Datenschutz:** Nachnamen werden nicht veröffentlicht. Nur Vorname und Team-Leistung zählen!")
