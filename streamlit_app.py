@@ -6,14 +6,6 @@ from google.oauth2.service_account import Credentials
 
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
-
-# NEU: Ein klein wenig CSS für die Optik der Kacheln (Sprengt nichts, verbessert nur das Look & Feel)
-st.markdown("""
-    <style>
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #f0f2f6; }
-    </style>
-    """, unsafe_allow_html=True)
-
 LIMIT_MINUTEN = 20
 SPALTEN = ["Datum", "Vorname", "Nachname", "Team", "Typ", "Details", "Punkte"]
 
@@ -79,13 +71,13 @@ st.title("⚽ Kicken beginnt im Kopf")
 st.subheader("Die Sommer-Leseliga des FLVW", anchor=False)
 st.markdown("---")
 
-# NEU: Highlight-Kacheln ganz oben (Statistik-Ticker)
+# NEU: Statistik-Metriken oben für mehr "Dashboard"-Feeling
 if not df.empty:
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric("Gelesene Bücher 📚", len(df[~df["Details"].str.contains("min")]))
     with m2:
-        # Punkte mal 15 als grobe Schätzung für die investierte Zeit
+        # Schätzung der Lesestunden (Punkte x 15 Min / 60)
         st.metric("Lesestunden (ca.) ⏱️", f"{int(df[df['Details'].str.contains('min')]['Punkte'].sum() * 15 / 60)} h")
     with m3:
         st.metric("Aktive Spieler 🏃‍♂️", df['Full_ID'].nunique() if 'Full_ID' in df.columns else 0)
@@ -94,6 +86,7 @@ if not df.empty:
 # --- SIDEBAR: SPIELER KABINE ---
 st.sidebar.header("👟 Spieler Kabine")
 
+# NEU: Die besprochene Info-Box
 st.sidebar.info("""
 **So sammelst du Punkte:**
 1. Namen & Stützpunkt eingeben.
@@ -144,9 +137,10 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
                 auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"], key="b_final")
                 p = 5 if "100" in auswahl else 10 if "bis 200" in auswahl else 15
 
+            # NEU: Die Sicherheitsabfrage
             confirm = st.checkbox("Ich bestätige, dass meine Angaben stimmen.")
 
-            if st.form_submit_button("⚽ Punkt für mein Team!"): # Button-Text angepasst
+            if st.form_submit_button("⚽ Punkt für mein Team!"):
                 if not confirm:
                     st.error("Bitte setze erst den Haken bei der Bestätigung!")
                 elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
@@ -155,7 +149,7 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
                     try:
                         heute = datetime.now().strftime("%d.%m.%Y")
                         worksheet.append_row([heute, v_name, n_name, team_choice, "Lesen", auswahl, p])
-                        st.sidebar.success("Super! Gespeichert.")
+                        st.sidebar.success("Gespeichert!")
                         st.cache_resource.clear()
                         st.rerun()
                     except Exception:
@@ -164,21 +158,21 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
         st.sidebar.caption("Tipp: Bei Fehlern melde dich bitte direkt bei deinem Trainer.")
 
 # --- HAUPTBEREICH ANZEIGE ---
-col1, col2 = st.columns([1, 1]) # Spaltenverhältnis leicht angepasst für Symmetrie
+col1, col2 = st.columns([1, 1])
 
 with col1:
     st.subheader("🏆 Team-Tabelle", anchor=False)
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty:
-        # Dataframe statt Table für moderneren Look & Sortierfunktion
-        st.dataframe(ranking_data.set_index("Team"), use_container_width=True)
+        # Nutzung von st.dataframe statt st.table für eine modernere Ansicht
+        st.dataframe(ranking_data.set_index("Team").style.format({"Durchschnitt": "{:.2f}"}), use_container_width=True)
     else:
         st.info("Noch keine Ergebnisse.")
 
 with col2:
-    st.subheader("📜 Live-Ticker", anchor=False) # Titel angepasst
+    st.subheader("📜 Live-Ticker", anchor=False)
     if not df.empty:
-        # Schönere Ticker-Anzeige
+        # Live-Ticker im Tabellenformat für bessere Lesbarkeit
         hist_df = df.iloc[::-1][["Datum", "Team", "Details"]].head(10)
         st.table(hist_df)
     else:
