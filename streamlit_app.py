@@ -5,21 +5,25 @@ from datetime import datetime
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# --- LOGOS OBEN ANZEIGEN ---
-col1, col2 = st.columns([1, 1])
+# --- HEADER: LOGOS AUF GLEICHER HÖHE ---
+# Wir nutzen Spalten und ein wenig Padding, um die Logos perfekt auszurichten
+col1, col2, col3 = st.columns([1, 2, 1])
+
 with col1:
     try:
-        st.image("KbiK-Logo.png", width=250)
+        st.image("KbiK-Logo.jpg", use_container_width=True)
     except:
-        st.warning("KbiK-Logo fehlt auf GitHub")
-with col2:
-    try:
-        st.image("Logo-FLVW (1).svg", width=250)
-    except:
-        st.warning("FLVW-Logo fehlt auf GitHub")
+        st.warning("KbiK-Logo.jpg fehlt auf GitHub")
 
-st.title("⚽ Kicken beginnt im Kopf")
-st.subheader("Die offizielle Sommer-Leseliga des FLVW")
+with col3:
+    try:
+        # Das FLVW-Logo wird hier rechtsbündig und passend skaliert
+        st.image("Logo-FLVW (1).svg", use_container_width=True)
+    except:
+        st.warning("Logo-FLVW (1).svg fehlt auf GitHub")
+
+st.markdown("<h1 style='text-align: center;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center;'>Die offizielle Sommer-Leseliga des FLVW</h3>", unsafe_allow_html=True)
 st.markdown("---")
 
 # --- DATEN-STRUKTUR ---
@@ -96,7 +100,7 @@ with main_col:
         tabelle_df.index += 1
         st.table(tabelle_df)
     else:
-        st.info("Noch keine Ergebnisse. Der Anpfiff ist erfolgt!")
+        st.info("Noch keine Ergebnisse. Der Anpfiff ist erfolgt – viel Spaß beim Lesen!")
 
 with side_col:
     st.header("📊 Statistik")
