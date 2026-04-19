@@ -4,10 +4,11 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- SETUP ---
-st.set_page_config(page_title="Kicken beginnt im Kopf", layout="wide")
+# --- SEITEN-LAYOUT ---
+st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# VERBINDUNG HERSTELLEN (Die robuste Methode)
+# --- VERBINDUNG ZU GOOGLE SHEETS ---
+@st.cache_resource
 def get_gspread_client():
     s = st.secrets["connections"]["gsheets"]
     credentials = Credentials.from_service_account_info(
@@ -27,24 +28,27 @@ def get_gspread_client():
     )
     return gspread.authorize(credentials)
 
-try:
+# Daten laden Funktion
+def load_data():
     client = get_gspread_client()
-    # Öffnet das Sheet über die URL aus deinen Secrets
     sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
     sh = client.open_by_url(sheet_url)
-    worksheet = sh.get_worksheet(0) # Das erste Tabellenblatt
-    
-    # Daten laden
+    worksheet = sh.get_worksheet(0)
     data = worksheet.get_all_records()
-    df = pd.DataFrame(data)
+    return pd.DataFrame(data), worksheet
+
+try:
+    df, worksheet = load_data()
 except Exception as e:
-    st.error("Verbindung zum Google Sheet gescheitert!")
-    st.code(str(e))
+    st.error("Fehler beim Laden der Daten.")
     df = pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
-st.title("⚽ Kicken beginnt im Kopf")
+# --- HEADER ---
+st.markdown("<h1 style='text-align: center;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Die große Leseliga-Meisterschaft</p>", unsafe_allow_html=True)
+st.markdown("---")
 
-# --- EINGABE ---
+# --- SIDEBAR: EINGABE ---
 st.sidebar.header("👟 Spielerkabine")
 with st.sidebar.form("input_form", clear_on_submit=True):
     name = st.text_input("Name des Kindes:")
@@ -54,24 +58,33 @@ with st.sidebar.form("input_form", clear_on_submit=True):
 
     if submit and name:
         pkt = 2 if "30" in ergebnis else 4 if "60" in ergebnis else 5
-        # Neue Zeile als Liste (muss zur Reihenfolge im Sheet passen!)
         neue_zeile = [datetime.now().strftime("%d.%m.%Y"), name, team, "Lesen", ergebnis, pkt]
         
         try:
             worksheet.append_row(neue_zeile)
-            st.sidebar.success("✅ Erfogreich im Google Sheet gespeichert!")
+            st.sidebar.success(f"✅ Tor für {name}!")
             st.rerun()
         except Exception as e:
-            st.sidebar.error("❌ Schreibfehler!")
-            st.sidebar.code(str(e))
+            st.sidebar.error("Fehler beim Speichern.")
 
-# --- TABELLE ---
-if not df.empty:
+# --- HAUPTBEREICH: TABELLE & STATISTIK ---
+col1, col2 = st.columns([1, 1])
+
+with col1:
     st.subheader("🏆 Aktuelle Tabelle")
-    # Sicherstellen, dass Punkte Zahlen sind
-    df["Punkte"] = pd.to_numeric(df["Punkte"], errors='coerce').fillna(0)
-    ranking = df.groupby("Team")["Punkte"].sum().reset_index().sort_values("Punkte", ascending=False)
-    st.table(ranking)
-    st.dataframe(df, use_container_width=True)
-else:
-    st.info("Noch keine Daten im Sheet gefunden.")
+    if not df.empty:
+        # Punkte sicherstellen
+        df["Punkte"] = pd.to_numeric(df["Punkte"], errors='coerce').fillna(0)
+        ranking = df.groupby("Team")["Punkte"].sum().reset_index().sort_values("Punkte", ascending=False)
+        st.table(ranking.set_index("Team"))
+    else:
+        st.info("Noch keine Daten vorhanden.")
+
+with col2:
+    st.subheader("📜 Letzte Aktivitäten")
+    if not df.empty:
+        # Die letzten 10 Einträge (umgekehrt sortiert)
+        st.dataframe(df.iloc[::-1].head(10), use_container_width=True)
+
+st.markdown("---")
+st.caption("⚽ Viel Erfolg beim Lesen und Kicken!")
