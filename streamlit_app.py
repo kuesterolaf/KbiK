@@ -162,8 +162,8 @@ if not df.empty:
         st.metric("Aktive Spieler 🏃‍♂️", df['Full_ID'].nunique() if 'Full_ID' in df.columns else 0)
     st.markdown("---")
 
-# --- SIDEBAR: SPIELER KABINE ---
-st.sidebar.header("👟 Spieler Kabine")
+# --- SIDEBAR: SPIELER-KABINE ---
+st.sidebar.header("👟 Spieler-Kabine")
 st.sidebar.info("""
 **So sammelst du Punkte:**
 1. Namen & Stützpunkt eingeben.
@@ -237,7 +237,8 @@ with col2:
         st.dataframe(hist_df, use_container_width=True, hide_index=True)
 
 # --- FUSSZEILE ---
+st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler geteilt. Spieler werden aus Datenschutzgründen nicht angezeigt!")
 st.markdown("---")
 with st.expander("⚖️ Datenschutz & Impressum"):
     st.write("Verantwortlich: Fußball- und Leichtathletik-Verband Westfalen e. V. (FLVW)")
-st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler geteilt.")
+
