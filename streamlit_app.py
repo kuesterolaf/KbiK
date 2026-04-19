@@ -91,11 +91,19 @@ def get_capped_ranking(df_full):
     
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
-# --- UI HEADER ---
+# --- UI HAUPTBEREICH: ZENTRIERTER HEADER ---
+# Wir erstellen 3 Spalten, das Logo kommt in die mittlere (col_logo2)
+col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
+
+with col_logo2:
+    if os.path.exists("flvw-logo.png"):
+        st.image("flvw-logo.png", use_container_width=True)
+    else:
+        st.markdown("<h1 style='text-align: center;'>⚽</h1>", unsafe_allow_html=True)
+
+# Titel und Subtitel zentriert darunter
 st.markdown('<div class="centered-header">', unsafe_allow_html=True)
-if os.path.exists("flvw-logo.png"):
-    st.image("flvw-logo.png", width=250)
-st.markdown('<h1 style="text-align: center;">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align: center; margin-top: -20px;">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
 st.markdown('<h3 style="text-align: center; color: #666;">Die Sommer-Leseliga des FLVW</h3>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
