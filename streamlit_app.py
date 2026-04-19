@@ -3,48 +3,102 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
-st.set_page_config(page_title="Kicken beginnt im Kopf", layout="wide")
+# --- KONFIGURATION ---
+st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-st.markdown("<h1 style='text-align: center;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
+# --- HEADER: SAUBER & OHNE LOGOS ---
+st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center;'>Die offizielle Sommer-Leseliga des FLVW</h3>", unsafe_allow_html=True)
+st.markdown("---")
 
-# Verbindung
+# --- VERBINDUNG ZUM SHEET ---
+# Stelle sicher, dass in requirements.txt "st-gsheets-connection" steht!
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data():
-    return conn.read(ttl="0s")
+    try:
+        data = conn.read(ttl="0s") # ttl="0s" sorgt dafür, dass immer live geladen wird
+        # Falls das Sheet leer ist, erstelle ein leeres DataFrame mit den Spalten
+        if data.empty:
+            return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
+        return data
+    except:
+        return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
 df_sheet = load_data()
 teams = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
 
-# Sidebar Formular
+# --- SIDEBAR: SPIELERKABINE (EINGABE) ---
+st.sidebar.header("👟 Spielerkabine")
+st.sidebar.info("Fair Play geht vor!")
+
 with st.sidebar.form("lese_form"):
     team_auswahl = st.selectbox("Team wählen:", teams)
-    kind_name = st.text_input("Name des Kindes:")
-    option = st.selectbox("Was wurde erreicht?", ["30 min Lesen (2 Pkt)", "60 min Lesen (4 Pkt)", "Buch (Bonus)"])
+    kind_name = st.text_input("Name des Kindes (intern):")
+    option = st.selectbox("Was wurde erreicht?", [
+        "30 min Lesen (2 Pkt)", "60 min Lesen (4 Pkt)",
+        "Buch bis 100 Seiten (4 Pkt)", "Buch 101 bis 200 Seiten (8 Pkt)",
+        "Buch über 201 Seiten (12 Pkt)", "Lieblingsbuch + Mini-Rezension (5 Pkt)"
+    ])
     submit = st.form_submit_button("Ergebnis eintragen")
     
     if submit and kind_name:
-        pkt = 2 if "30 min" in option else 4 if "60 min" in option else 10
+        pkt_map = {
+            "30 min Lesen (2 Pkt)": 2, "60 min Lesen (4 Pkt)": 4,
+            "Buch bis 100 Seiten (4 Pkt)": 4, "Buch 101 bis 200 Seiten (8 Pkt)": 8,
+            "Buch über 201 Seiten (12 Pkt)": 12, "Lieblingsbuch + Mini-Rezension (5 Pkt)": 5
+        }
+        
         neuer_eintrag = pd.DataFrame([{
             "Datum": datetime.now().strftime("%Y-%W"),
             "Kind": kind_name, "Team": team_auswahl,
-            "Typ": "Lesen" if "min" in option else "Bonus",
-            "Details": option, "Punkte": pkt
+            "Typ": "Lesen" if "min Lesen" in option else "Bonus",
+            "Details": option, "Punkte": pkt_map[option]
         }])
         
-        try:
-            # Hier versuchen wir zu speichern
-            updated_df = pd.concat([df_sheet, neuer_eintrag], ignore_index=True)
-            conn.update(data=updated_df)
-            st.sidebar.success("Gespeichert!")
-            st.rerun()
-        except Exception as e:
-            st.sidebar.error("Schreibfehler! Hast du das Sheet für 'Jeder als Editor' freigegeben?")
-            st.sidebar.code(str(e))
+        # Daten an das Sheet anhängen und speichern
+        updated_df = pd.concat([df_sheet, neuer_eintrag], ignore_index=True)
+        conn.update(data=updated_df)
+        st.sidebar.success(f"Tor für {team_auswahl}! Punkte gespeichert.")
+        st.rerun()
 
-# Tabelle anzeigen
-st.header("🏆 Tabelle")
-if not df_sheet.empty:
-    # Einfache Summe für die erste Ansicht
-    tabelle = df_sheet.groupby("Team")["Punkte"].sum().reset_index()
-    st.table(tabelle.sort_values("Punkte", ascending=False))
+# --- LOGIK: BERECHNUNG & DECKELUNG ---
+def berechne_team_punkte(team_df):
+    if team_df.empty: return 0
+    # Sicherstellen, dass Punkte Zahlen sind
+    team_df["Punkte"] = pd.to_numeric(team_df["Punkte"], errors='coerce').fillna(0)
+    
+    bonus = team_df[team_df["Typ"] == "Bonus"]["Punkte"].sum()
+    lese_df = team_df[team_df["Typ"] == "Lesen"].copy()
+    
+    if not lese_df.empty:
+        # Deckelung 20 Pkt/Woche pro Kind
+        wochen_lese_pkt = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum()
+    else:
+        wochen_lese_pkt = 0
+    return bonus + wochen_lese_pkt
+
+# --- HAUPTBEREICH: TABELLE & STATISTIK ---
+# Wir nutzen Spalten für das Zwei-Spalten-Layout (Tabelle links 2/3, Statistik rechts 1/3)
+col_main, col_stat = st.columns([2, 1])
+
+with col_main:
+    st.header("🏆 Die aktuelle Tabelle")
+    team_scores = []
+    for t in teams:
+        score = berechne_team_punkte(df_sheet[df_sheet["Team"] == t])
+        team_scores.append({"Team": t, "Punkte": int(score)})
+    
+    tabelle_df = pd.DataFrame(team_scores).sort_values(by="Punkte", ascending=False).reset_index(drop=True)
+    tabelle_df.index += 1
+    st.table(tabelle_df)
+
+with col_stat:
+    st.header("📊 Gesamtleistung")
+    gesamt = sum([s["Punkte"] for s in team_scores])
+    st.metric("Punkte insgesamt", f"{gesamt}")
+    st.write("**Stadion-Ziel (1000 Pkt):**")
+    st.progress(min(gesamt / 1000, 1.0))
+
+# --- REGEL-BOX ---
+with st.expander("📝 Regeln & Punktesystem"):
