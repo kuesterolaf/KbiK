@@ -52,7 +52,6 @@ st.markdown("""
     [data-testid="stMain"] [data-testid="stMetric"] * { color: #31333F !important; }
 
     /* --- DER FORM-BUTTON FIX --- */
-    /* Erzwingt weißes Design für den Eintragen-Button */
     [data-testid="stSidebar"] button[kind="primaryFormSubmit"], 
     [data-testid="stSidebar"] button[kind="secondaryFormSubmit"],
     [data-testid="stSidebar"] .stButton > button {
@@ -63,14 +62,12 @@ st.markdown("""
         height: 3em !important;
     }
 
-    /* Erzwingt rote Schrift auf dem Button */
     [data-testid="stSidebar"] button p, 
     [data-testid="stSidebar"] button span {
         color: #E31E24 !important;
         font-weight: bold !important;
     }
     
-    /* Hover-Effekt */
     [data-testid="stSidebar"] button:hover {
         background-color: #f0f2f6 !important;
     }
@@ -96,7 +93,6 @@ def load_data():
         df = pd.DataFrame(data)
         if not df.empty:
             df.columns = [c.strip() for c in df.columns]
-            # Eindeutige ID für den Wochenabgleich (Kleinbuchstaben & ohne Leerzeichen)
             df['Full_ID'] = df['Vorname'].astype(str).str.lower().str.strip() + " " + df['Nachname'].astype(str).str.lower().str.strip()
             df['Datum_dt'] = pd.to_datetime(df['Datum'], format='%d.%m.%Y', errors='coerce')
             df['KW'] = df['Datum_dt'].dt.isocalendar().week
@@ -110,28 +106,18 @@ df, worksheet = load_data()
 # --- 4. RANKING-LOGIK ---
 def get_capped_ranking(df_full):
     if df_full.empty or "Team" not in df_full.columns: return pd.DataFrame()
-    
-    # Kind_ID für die Anzeige im Ranking
     df_full['Kind_ID'] = df_full['Vorname'].astype(str).str.strip() + " " + df_full['Nachname'].astype(str).str.strip()
     mask_min = df_full["Details"].str.contains("min|Min", na=False, case=False)
-    
-    # 1. Minuten-Punkte mit Deckelung pro Woche/Kind
     df_min = df_full[mask_min].copy()
     if not df_min.empty:
         m_sum = df_min.groupby(['Jahr', 'KW', 'Kind_ID', 'Team'])['Punkte'].sum().reset_index()
         m_sum['Punkte'] = m_sum['Punkte'].clip(upper=LIMIT_MINUTEN)
         p_min = m_sum.groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index()
     else: p_min = pd.DataFrame(columns=["Kind_ID", "Team", "Punkte"])
-    
-    # 2. Buch-Punkte (ohne Deckelung)
     df_extra = df_full[~mask_min].copy()
     p_extra = df_extra.groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index() if not df_extra.empty else pd.DataFrame(columns=["Kind_ID", "Team", "Punkte"])
-    
-    # Zusammenführen
     total = pd.concat([p_min, p_extra]).groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index()
     if total.empty: return pd.DataFrame()
-    
-    # Team-Statistik
     stats = total.groupby('Team').agg(Gesamt=('Punkte', 'sum'), Spieler=('Kind_ID', 'nunique')).reset_index()
     stats['Durchschnitt'] = (stats['Gesamt'] / stats['Spieler']).round(2)
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
@@ -160,19 +146,27 @@ if not df.empty:
     with m3: st.metric("Aktive Spieler 🏃‍♂️", df['Full_ID'].nunique() if 'Full_ID' in df.columns else 0)
     st.markdown("---")
 
-# --- 7. SIDEBAR ---
+# --- 7. SIDEBAR (MIT INFOTEXT) ---
 st.sidebar.header("👟 Spieler Kabine")
+
+# HIER IST DER INFOTEXT WIEDER:
+st.sidebar.info("""
+**So sammelst du Punkte:**
+1. Trage deinen Namen ein & wähle dein Team.
+2. Wähle Lesezeit oder ein fertiges Buch.
+3. Bestätige deine Angaben und klicke auf 'Eintragen'.
+
+*Hinweis: Lesezeit ist auf 20 Punkte pro Woche begrenzt.*
+""")
+
 v_input = st.sidebar.text_input("Vorname:", key="v_in").strip()
 n_input = st.sidebar.text_input("Nachname:", key="n_in").strip()
 t_liste = ["-- Bitte wählen --", "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arnsberg/Soest", "Beckum", "Bielefeld", "Bochum", "Detmold", "Dortmund", "Gelsenkirchen", "Gütersloh", "Hagen", "Herford", "Herne", "Hochsauerlandkreis", "Höxter", "Lemgo", "Lippstadt", "Lübbecke/Minden", "Lüdenscheid/Iserlohn", "Münster I", "Münster II", "Olpe", "Paderborn", "Recklinghausen", "Siegen/Wittgenstein", "Steinfurt", "Tecklenburg", "Unna/Hamm"]
 team_choice = st.sidebar.selectbox("Dein Stützpunkt:", t_liste, key="t_in")
 
 if v_input and n_input and team_choice != "-- Bitte wählen --":
-    # Normalisierte ID für den Wochen-Check
     search_id = f"{v_input.lower()} {n_input.lower()}"
     kw, jahr = datetime.now().isocalendar()[1], datetime.now().isocalendar()[0]
-    
-    # Aktuelle Wochenpunkte berechnen
     akt_m = 0
     if not df.empty:
         akt_m = df[(df['Full_ID'] == search_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min|Min"))]["Punkte"].sum()
@@ -193,7 +187,7 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
             if not confirm:
                 st.error("Bitte Haken setzen!")
             elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
-                st.error(f"Limit erreicht! Du hast diese Woche bereits {int(akt_m)} Punkte durch Lesezeit.")
+                st.error(f"Limit erreicht! Du hast diese Woche bereits {int(akt_m)} Punkte.")
             elif worksheet:
                 worksheet.append_row([datetime.now().strftime("%d.%m.%Y"), v_input, n_input, team_choice, "Lesen", auswahl, p])
                 st.sidebar.success("Gespeichert!")
