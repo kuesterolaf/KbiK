@@ -18,20 +18,38 @@ st.markdown("""
     [data-testid="stSidebar"] * { color: white !important; }
     [data-testid="stSidebar"] [data-testid="stMetric"] { background-color: transparent !important; border: none !important; padding: 0px !important; }
     [data-testid="stSidebar"] input, [data-testid="stSidebar"] [data-baseweb="select"] div { background-color: white !important; color: #31333F !important; }
+    
     .header-container { text-align: center; width: 100%; }
-    .tight-title { margin-top: -100px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
+    .tight-title { margin-top: -80px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
     .tight-subtitle { margin-top: -40px !important; color: #666 !important; text-align: center; }
+    
     [data-testid="stMain"] [data-testid="stMetric"] { 
         background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #f0f2f6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     [data-testid="stMain"] [data-testid="stMetric"] * { color: #31333F !important; }
+    
     [data-testid="stSidebar"] button[kind="primaryFormSubmit"], [data-testid="stSidebar"] .stButton > button {
         background-color: white !important; border: 2px solid #31333F !important; border-radius: 5px !important; width: 100% !important; height: 3em !important;
     }
     [data-testid="stSidebar"] button p, [data-testid="stSidebar"] button span { color: #E31E24 !important; font-weight: bold !important; }
     
-    /* Tabellen Styling: Header fett & Index ausblenden */
-    th { font-weight: bold !important; background-color: #f0f2f6 !important; }
+    /* Tabellen Styling für die HTML-Ausgabe */
+    .styled-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 1em;
+        font-family: sans-serif;
+    }
+    .styled-table thead tr {
+        background-color: #f0f2f6;
+        text-align: left;
+        font-weight: bold;
+    }
+    .styled-table th, .styled-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dddddd;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -81,8 +99,6 @@ def get_capped_ranking(df_full):
     if total.empty: return pd.DataFrame()
     stats = total.groupby('Team').agg(Gesamt=('Punkte', 'sum'), Spieler=('Kind_ID', 'nunique')).reset_index()
     stats['Durchschnitt'] = (stats['Gesamt'] / stats['Spieler']).round(2)
-    
-    # Ranking sortieren und Platzierung als echte Spalte einfügen
     ranking = stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False).reset_index(drop=True)
     ranking.insert(0, 'Platz', ranking.index + 1)
     return ranking
@@ -142,17 +158,17 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
                     st.cache_resource.clear()
                     st.rerun()
 
-# --- 8. TABELLEN ---
+# --- 8. TABELLEN (SAUBERE OPTIK) ---
 col_tab1, col_tab2 = st.columns([1, 1.2])
 with col_tab1:
     st.subheader("🏆 Team-Tabelle (Top 5)", anchor=False)
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty: 
-        # FIX: Platzierung als sichtbare Spalte, Index versteckt
-        st.table(ranking_data.head(5).assign(temp='').set_index('temp').style.format({"Durchschnitt": "{:.2f}"}))
+        # HTML Rendering ohne Index
+        st.write(ranking_data.head(5).style.format({"Durchschnitt": "{:.2f}"}).hide(axis='index').to_html(), unsafe_allow_html=True)
         if len(ranking_data) > 5:
             with st.expander("Vollständige Tabelle anzeigen"):
-                st.table(ranking_data.iloc[5:].assign(temp='').set_index('temp').style.format({"Durchschnitt": "{:.2f}"}))
+                st.write(ranking_data.style.format({"Durchschnitt": "{:.2f}"}).hide(axis='index').to_html(), unsafe_allow_html=True)
     else: st.write("Noch keine Daten.")
 
 with col_tab2:
