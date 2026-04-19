@@ -8,51 +8,63 @@ import os
 # --- 1. KONFIGURATION & KONSTANTEN ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# Wichtig: Diese Variable muss vor der Logik definiert sein!
 LIMIT_MINUTEN = 20 
 SPALTEN = ["Datum", "Vorname", "Nachname", "Team", "Typ", "Details", "Punkte"]
 
 # --- 2. DESIGN UPGRADE (CSS) ---
 st.markdown("""
     <style>
-    /* Sidebar: FLVW-Rot und weiße Schrift für alles */
+    /* Sidebar: FLVW-Rot */
     [data-testid="stSidebar"] { 
         background-color: #E31E24 !important; 
     }
     [data-testid="stSidebar"] * { 
         color: white !important; 
     }
-    /* Spezieller Fix für Radio-Buttons, Checkboxen und Texte in der Sidebar */
-    [data-testid="stSidebar"] .stRadio label p, 
-    [data-testid="stSidebar"] label p, 
-    [data-testid="stSidebar"] .stMarkdown p,
-    [data-testid="stSidebar"] [data-testid="stMetricValue"] { 
-        color: white !important; 
+    
+    /* FIX: Metrik-Box in der Sidebar transparent machen (Entfernt den weißen Klotz) */
+    [data-testid="stSidebar"] [data-testid="stMetric"] {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0px !important;
     }
-    [data-testid="stSidebar"] [data-baseweb="radio"] div:first-child, 
-    [data-testid="stSidebar"] [data-baseweb="checkbox"] div:first-child { 
-        border-color: white !important; 
-    }
-    /* Eingabefelder in der Sidebar: Weißer Hintergrund, dunkler Text für Lesbarkeit */
+    
+    /* Eingabefelder in der Sidebar: Weißer Hintergrund, dunkler Text */
     [data-testid="stSidebar"] input, 
     [data-testid="stSidebar"] [data-baseweb="select"] div { 
         background-color: white !important; 
         color: #31333F !important; 
     }
 
-    /* Zentrierter Header & Logo-Abstände */
-    .header-container { text-align: center; margin-top: -40px; }
-    .tight-title { margin-top: -15px !important; line-height: 1.1; font-weight: bold; }
-    .tight-subtitle { margin-top: -10px !important; color: #666; font-style: italic; }
+    /* ZENTRIERUNG für den Header-Bereich */
+    .header-container { 
+        text-align: center; 
+        width: 100%;
+    }
+    
+    .tight-title { 
+        margin-top: -15px !important; 
+        line-height: 1.1; 
+        text-align: center;
+    }
+    
+    .tight-subtitle { 
+        margin-top: -10px !important; 
+        color: #666; 
+        text-align: center;
+    }
 
-    /* Metriken & Buttons */
-    .stMetric { 
+    /* Metriken im Hauptbereich (Weiß mit Schatten) */
+    [data-testid="stMain"] [data-testid="stMetric"] { 
         background-color: #ffffff; 
         padding: 15px; 
         border-radius: 10px; 
         box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
         border: 1px solid #f0f2f6; 
     }
+    
+    /* Weißer Button in der Sidebar */
     div.stButton > button:first-child { 
         background-color: #ffffff !important; 
         color: #E31E24 !important; 
@@ -98,30 +110,24 @@ def get_capped_ranking(df_full):
     if df_full.empty or "Team" not in df_full.columns: return pd.DataFrame()
     df_full['Kind_ID'] = df_full['Vorname'].astype(str) + " " + df_full['Nachname'].astype(str)
     mask_min = df_full["Details"].str.contains("min|Min", na=False, case=False)
-    
-    # Minuten mit Cap
     df_min = df_full[mask_min].copy()
     if not df_min.empty:
         m_sum = df_min.groupby(['Jahr', 'KW', 'Kind_ID', 'Team'])['Punkte'].sum().reset_index()
         m_sum['Punkte'] = m_sum['Punkte'].clip(upper=LIMIT_MINUTEN)
         p_min = m_sum.groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index()
     else: p_min = pd.DataFrame(columns=["Kind_ID", "Team", "Punkte"])
-    
-    # Bücher ohne Cap
     df_extra = df_full[~mask_min].copy()
     p_extra = df_extra.groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index() if not df_extra.empty else pd.DataFrame(columns=["Kind_ID", "Team", "Punkte"])
-    
     total = pd.concat([p_min, p_extra]).groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index()
     if total.empty: return pd.DataFrame()
-    
     stats = total.groupby('Team').agg(Gesamt=('Punkte', 'sum'), Spieler=('Kind_ID', 'nunique')).reset_index()
     stats['Durchschnitt'] = (stats['Gesamt'] / stats['Spieler']).round(2)
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
-# --- 5. HAUPTBEREICH: HEADER ---
-col_logo1, col_logo2, col_logo3 = st.columns([1, 1.2, 1])
-with col_logo2:
-    # Prüft nacheinander die möglichen Logo-Dateinamen
+# --- 5. HAUPTBEREICH: ZENTRIERTER HEADER ---
+# Spalten für die Zentrierung des Logos
+col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
+with col_l2:
     if os.path.exists("KbiK-Logo.jpg"):
         st.image("KbiK-Logo.jpg", use_container_width=True)
     elif os.path.exists("flvw-logo.png"):
@@ -129,6 +135,7 @@ with col_logo2:
     else:
         st.markdown("<h1 style='text-align: center;'>⚽</h1>", unsafe_allow_html=True)
 
+# Zentrierte Titel
 st.markdown('<div class="header-container">', unsafe_allow_html=True)
 st.markdown('<h1 class="tight-title">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
 st.markdown('<h3 class="tight-subtitle">Die Sommer-Leseliga des FLVW</h3>', unsafe_allow_html=True)
@@ -145,7 +152,7 @@ if not df.empty:
     with m3: st.metric("Aktive Spieler 🏃‍♂️", df['Full_ID'].nunique() if 'Full_ID' in df.columns else 0)
     st.markdown("---")
 
-# --- 7. SIDEBAR: EINGABE ---
+# --- 7. SIDEBAR ---
 st.sidebar.header("👟 Spieler Kabine")
 st.sidebar.info("**So sammelst du Punkte:**\n1. Name & Team eingeben.\n2. Lesezeit oder Buch wählen.\n3. Haken setzen & 'Eintragen'.")
 
