@@ -6,12 +6,12 @@ from datetime import datetime
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# --- HEADER (Altes Design) ---
+# Header (Altes Design)
 st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>⚽ Kicken beginnt im Kopf</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-weight: bold; font-size: 1.2em;'>Die offizielle Sommer-Leseliga des FLVW</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-weight: bold;'>Die offizielle Sommer-Leseliga des FLVW</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- VERBINDUNG ---
+# Verbindung zum Sheet
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data():
@@ -20,15 +20,14 @@ def load_data():
         if data is None or data.empty:
             return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
         return data
-    except:
+    except Exception:
         return pd.DataFrame(columns=["Datum", "Kind", "Team", "Typ", "Details", "Punkte"])
 
 df_aktuell = load_data()
 teams = ["Eintracht Vorleser", "FC Bücherwurm", "Rasenball Lesen", "SpVgg Buchdeckel"]
 
-# --- SIDEBAR: SPIELERKABINE ---
+# Sidebar: Spielerkabine
 st.sidebar.header("👟 Spielerkabine")
-
 with st.sidebar.form("lese_form", clear_on_submit=True):
     team_auswahl = st.selectbox("Team wählen:", teams)
     kind_name = st.text_input("Name des Kindes:")
@@ -46,57 +45,43 @@ with st.sidebar.form("lese_form", clear_on_submit=True):
             "Buch über 201 Seiten (12 Pkt)": 12, "Lieblingsbuch + Mini-Rezension (5 Pkt)": 5
         }
         
-        neuer_eintrag = pd.DataFrame([{
+        neuer_eintrag = {
             "Datum": datetime.now().strftime("%Y-%W"),
             "Kind": kind_name, "Team": team_auswahl,
             "Typ": "Lesen" if "min" in option else "Bonus",
             "Details": option, "Punkte": pkt_map[option]
-        }])
+        }
         
         try:
-            # Wir hängen die neuen Daten an die alten an
-            df_updated = pd.concat([df_aktuell, neuer_eintrag], ignore_index=True)
-            # Speichern im Google Sheet
+            df_updated = pd.concat([df_aktuell, pd.DataFrame([neuer_eintrag])], ignore_index=True)
             conn.update(data=df_updated)
-            st.sidebar.success("TOR! Im Google Sheet gespeichert.")
+            st.sidebar.success("TOR! Gespeichert.")
             st.rerun()
-        except:
-            st.sidebar.error("Konnte nicht im Sheet speichern. Prüfe 'Editor'-Rechte!")
+        except Exception as e:
+            st.sidebar.error("Fehler: Google blockiert das Schreiben.")
+            st.sidebar.info("LÖSUNG: Klicke im Google Sheet auf 'Teilen' und füge die E-Mail-Adresse deines Service-Accounts (aus den Streamlit-Secrets) als Editor hinzu.")
 
-# --- BERECHNUNG ---
+# Layout & Statistik
+col_main, col_stat = st.columns([2, 1])
+
 def berechne_punkte(team_df):
     if team_df.empty: return 0
     team_df["Punkte"] = pd.to_numeric(team_df["Punkte"], errors='coerce').fillna(0)
     bonus = team_df[team_df["Typ"] == "Bonus"]["Punkte"].sum()
     lese_df = team_df[team_df["Typ"] == "Lesen"].copy()
-    if not lese_df.empty:
-        wochen_lese_pkt = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum()
-    else:
-        wochen_lese_pkt = 0
-    return bonus + wochen_lese_pkt
-
-# --- LAYOUT ---
-col_main, col_stat = st.columns([2, 1])
+    wochen_lese = lese_df.groupby(["Kind", "Datum"])["Punkte"].sum().clip(upper=20).sum() if not lese_df.empty else 0
+    return bonus + wochen_lese
 
 with col_main:
     st.header("🏆 Die aktuelle Tabelle")
-    team_scores = []
-    for t in teams:
-        score = berechne_punkte(df_aktuell[df_aktuell["Team"] == t])
-        team_scores.append({"Team": t, "Punkte": int(score)})
-    
-    tabelle_df = pd.DataFrame(team_scores).sort_values(by="Punkte", ascending=False).reset_index(drop=True)
-    tabelle_df.index += 1
-    st.table(tabelle_df)
+    scores = [{"Team": t, "Punkte": int(berechne_punkte(df_aktuell[df_aktuell["Team"] == t]))} for t in teams]
+    tabelle = pd.DataFrame(scores).sort_values("Punkte", ascending=False).reset_index(drop=True)
+    tabelle.index += 1
+    st.table(tabelle)
 
 with col_stat:
     st.header("📊 Statistik")
-    gesamt = sum([s["Punkte"] for s in team_scores])
+    gesamt = sum([s["Punkte"] for s in scores])
     st.metric("Punkte insgesamt", f"{gesamt}")
     st.progress(min(gesamt / 1000, 1.0))
     st.write(f"Noch {max(1000 - gesamt, 0)} Punkte bis zum Ziel!")
-
-st.markdown("---")
-with st.expander("📝 Regeln"):
-    st.write("- Lesezeit: Max. 20 Pkt/Woche pro Kind.")
-    st.write("- Bücher zählen immer voll.")
