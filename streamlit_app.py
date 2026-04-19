@@ -92,7 +92,7 @@ t_liste = [
     "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arnsberg/Soest", "Beckum", 
     "Bielefeld", "Bochum", "Detmold", "Dortmund", "Gelsenkirchen", 
     "Gütersloh", "Hagen", "Herford", "Herne", "Hochsauerlandkreis", 
-    "Höxter", "Lemgo", "Lippstadt", "Lübbecke/Minden", "Lüdenscheid/Iserlohn", 
+    "Höxter", "Lemgo", "Lippstadt", "Minden/Lübbecke", "Lüdenscheid/Iserlohn", 
     "Münster I", "Münster II", "Olpe", "Paderborn", "Recklinghausen", 
     "Siegen/Wittgenstein", "Steinfurt", "Tecklenburg", "Unna/Hamm"
 ]
