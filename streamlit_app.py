@@ -146,7 +146,7 @@ if not df.empty:
     with m3: st.metric("Aktive Spieler 🏃‍♂️", df['Full_ID'].nunique() if 'Full_ID' in df.columns else 0)
     st.markdown("---")
 
-# --- 7. SIDEBAR (MIT INFOTEXT) ---
+# --- 7. SIDEBAR ---
 st.sidebar.header("👟 Spieler-Kabine")
 st.sidebar.info("""
 **So sammelst du Punkte:**
@@ -166,14 +166,12 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
     search_id = f"{v_input.lower()} {n_input.lower()}"
     kw, jahr = datetime.now().isocalendar()[1], datetime.now().isocalendar()[0]
     
-    # Team-Abgleich (Sperre)
     assigned_team = None
     if not df.empty:
         prev_entries = df[df['Full_ID'] == search_id]
         if not prev_entries.empty:
             assigned_team = prev_entries.iloc[0]['Team']
 
-    # Wochenpunkte-Check
     akt_m = 0
     if not df.empty:
         akt_m = df[(df['Full_ID'] == search_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min|Min"))]["Punkte"].sum()
@@ -181,7 +179,7 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
     st.sidebar.metric("Deine Wochen-Punkte (Zeit)", f"{int(akt_m)} / {LIMIT_MINUTEN}")
     
     if assigned_team and assigned_team != team_choice:
-        st.sidebar.error(f"Achtung! Du bist bereits für das Team **{assigned_team}** registriert. Bitte wähle dieses Team aus.")
+        st.sidebar.error(f"Achtung! Du bist bereits für das Team **{assigned_team}** registriert.")
     else:
         kat = st.sidebar.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"])
         with st.sidebar.form("entry_form", clear_on_submit=True):
@@ -197,36 +195,35 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
                 if not confirm:
                     st.error("Bitte Haken setzen!")
                 elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
-                    st.error(f"Limit erreicht! Du hast diese Woche bereits {int(akt_m)} Punkte.")
+                    st.error(f"Limit erreicht! ({int(akt_m)} Pkt. vorhanden)")
                 elif worksheet:
                     worksheet.append_row([datetime.now().strftime("%d.%m.%Y"), v_input, n_input, team_choice, "Lesen", auswahl, p])
                     st.sidebar.success("Gespeichert!")
                     st.cache_resource.clear()
                     st.rerun()
 
-# --- 8. TABELLEN (TOP 5 + REST) ---
+# --- 8. TABELLEN (BEIDE JETZT BEGRENZT) ---
 col_tab1, col_tab2 = st.columns([1, 1.2])
 with col_tab1:
     st.subheader("🏆 Team-Tabelle (Top 5)", anchor=False)
     ranking_data = get_capped_ranking(df)
     
     if not ranking_data.empty: 
-        # Top 5 anzeigen
         top_5 = ranking_data.head(5).set_index("Team")
         st.table(top_5.style.format({"Durchschnitt": "{:.2f}"}))
-        
-        # Rest im Expander verstecken (ab Platz 6)
         if len(ranking_data) > 5:
             with st.expander("Vollständige Tabelle anzeigen"):
-                rest_teams = ranking_data.iloc[5:].set_index("Team")
-                st.table(rest_teams.style.format({"Durchschnitt": "{:.2f}"}))
-    else: 
-        st.write("Noch keine Daten vorhanden.")
+                st.table(ranking_data.iloc[5:].set_index("Team").style.format({"Durchschnitt": "{:.2f}"}))
+    else: st.write("Keine Daten.")
 
 with col_tab2:
-    st.subheader("📜 Letzte Aktivitäten", anchor=False)
+    st.subheader("📜 Letzte Aktivitäten (Top 5)", anchor=False)
     if not df.empty:
-        st.dataframe(df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(10), use_container_width=True, hide_index=True)
+        # Hier ist die Änderung: head(5) statt head(10)
+        st.dataframe(df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(5), use_container_width=True, hide_index=True)
+        if len(df) > 5:
+             with st.expander("Ältere Aktivitäten anzeigen"):
+                st.dataframe(df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].iloc[5:25], use_container_width=True, hide_index=True)
 
 st.markdown("---")
 with st.expander("⚖️ Datenschutz & Impressum"):
