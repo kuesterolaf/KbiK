@@ -94,7 +94,7 @@ def get_capped_ranking(df_full):
 # --- UI HEADER ---
 st.markdown('<div class="centered-header">', unsafe_allow_html=True)
 if os.path.exists("flvw-logo.png"):
-    st.image("flvw-logo.png", width=250, align: center)
+    st.image("flvw-logo.png", width=250)
 st.markdown('<h1 style="text-align: center;">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
 st.markdown('<h3 style="text-align: center; color: #666;">Die Sommer-Leseliga des FLVW</h3>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
