@@ -9,7 +9,7 @@ st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout=
 col1, col2 = st.columns([1, 1])
 with col1:
     try:
-        st.image("KbiK-Logo.jpg", width=250)
+        st.image("KbiK-Logo.png", width=250)
     except:
         st.warning("KbiK-Logo fehlt auf GitHub")
 with col2:
