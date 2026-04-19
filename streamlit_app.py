@@ -14,7 +14,7 @@ SPALTEN = ["Datum", "Vorname", "Nachname", "Team", "Typ", "Details", "Punkte"]
 # --- 2. DESIGN UPGRADE (CSS) ---
 st.markdown("""
     <style>
-    /* Sidebar: FLVW-Rot */
+    /* Sidebar Grunddesign */
     [data-testid="stSidebar"] { 
         background-color: #E31E24 !important; 
     }
@@ -22,57 +22,62 @@ st.markdown("""
         color: white !important; 
     }
     
-    /* Metrik in Sidebar transparent */
+    /* Metrik in Sidebar (Punkteanzeige) */
     [data-testid="stSidebar"] [data-testid="stMetric"] {
         background-color: transparent !important;
         border: none !important;
         padding: 0px !important;
     }
     
-    /* Eingabefelder in der Sidebar: Weißer Hintergrund */
+    /* Eingabefelder Sidebar */
     [data-testid="stSidebar"] input, 
     [data-testid="stSidebar"] [data-baseweb="select"] div { 
         background-color: white !important; 
         color: #31333F !important; 
     }
 
-    /* Zentrierung für Header */
+    /* Header Zentrierung */
     .header-container { text-align: center; width: 100%; }
     .tight-title { margin-top: -15px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
     .tight-subtitle { margin-top: -10px !important; color: #666 !important; text-align: center; }
 
-    /* --- DER "FESTE" BUTTON FIX --- */
-    [data-testid="stSidebar"] button {
-        background-color: #ffffff !important;
-        border: 2px solid #31333F !important;
-        border-radius: 5px !important;
-        height: 3em !important;
-        width: 100% !important;
-    }
-
-    [data-testid="stSidebar"] button p,
-    [data-testid="stSidebar"] button div,
-    [data-testid="stSidebar"] button span {
-        color: #E31E24 !important;
-        font-weight: bold !important;
-    }
-
-    [data-testid="stSidebar"] button:hover {
-        background-color: #eeeeee !important;
-    }
-    
-    /* Metriken im Hauptbereich */
+    /* Metriken Hauptbereich */
     [data-testid="stMain"] [data-testid="stMetric"] { 
         background-color: #ffffff; 
         padding: 15px; 
         border-radius: 10px; 
         border: 1px solid #f0f2f6; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     [data-testid="stMain"] [data-testid="stMetric"] * { color: #31333F !important; }
+
+    /* --- DER FORM-BUTTON FIX --- */
+    /* Erzwingt weißes Design für den Eintragen-Button */
+    [data-testid="stSidebar"] button[kind="primaryFormSubmit"], 
+    [data-testid="stSidebar"] button[kind="secondaryFormSubmit"],
+    [data-testid="stSidebar"] .stButton > button {
+        background-color: white !important;
+        border: 2px solid #31333F !important;
+        border-radius: 5px !important;
+        width: 100% !important;
+        height: 3em !important;
+    }
+
+    /* Erzwingt rote Schrift auf dem Button */
+    [data-testid="stSidebar"] button p, 
+    [data-testid="stSidebar"] button span {
+        color: #E31E24 !important;
+        font-weight: bold !important;
+    }
+    
+    /* Hover-Effekt */
+    [data-testid="stSidebar"] button:hover {
+        background-color: #f0f2f6 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. DATENBANK-ANBINDUNG ---
+# --- 3. DATENBANK-FUNKTIONEN ---
 @st.cache_resource
 def get_client():
     try:
@@ -91,7 +96,7 @@ def load_data():
         df = pd.DataFrame(data)
         if not df.empty:
             df.columns = [c.strip() for c in df.columns]
-            # Normalisierung für den Abgleich
+            # Eindeutige ID für den Wochenabgleich (Kleinbuchstaben & ohne Leerzeichen)
             df['Full_ID'] = df['Vorname'].astype(str).str.lower().str.strip() + " " + df['Nachname'].astype(str).str.lower().str.strip()
             df['Datum_dt'] = pd.to_datetime(df['Datum'], format='%d.%m.%Y', errors='coerce')
             df['KW'] = df['Datum_dt'].dt.isocalendar().week
@@ -106,10 +111,11 @@ df, worksheet = load_data()
 def get_capped_ranking(df_full):
     if df_full.empty or "Team" not in df_full.columns: return pd.DataFrame()
     
-    # Kind-ID für das Ranking bilden
+    # Kind_ID für die Anzeige im Ranking
     df_full['Kind_ID'] = df_full['Vorname'].astype(str).str.strip() + " " + df_full['Nachname'].astype(str).str.strip()
     mask_min = df_full["Details"].str.contains("min|Min", na=False, case=False)
     
+    # 1. Minuten-Punkte mit Deckelung pro Woche/Kind
     df_min = df_full[mask_min].copy()
     if not df_min.empty:
         m_sum = df_min.groupby(['Jahr', 'KW', 'Kind_ID', 'Team'])['Punkte'].sum().reset_index()
@@ -117,19 +123,22 @@ def get_capped_ranking(df_full):
         p_min = m_sum.groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index()
     else: p_min = pd.DataFrame(columns=["Kind_ID", "Team", "Punkte"])
     
+    # 2. Buch-Punkte (ohne Deckelung)
     df_extra = df_full[~mask_min].copy()
     p_extra = df_extra.groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index() if not df_extra.empty else pd.DataFrame(columns=["Kind_ID", "Team", "Punkte"])
     
+    # Zusammenführen
     total = pd.concat([p_min, p_extra]).groupby(['Kind_ID', 'Team'])['Punkte'].sum().reset_index()
     if total.empty: return pd.DataFrame()
     
+    # Team-Statistik
     stats = total.groupby('Team').agg(Gesamt=('Punkte', 'sum'), Spieler=('Kind_ID', 'nunique')).reset_index()
     stats['Durchschnitt'] = (stats['Gesamt'] / stats['Spieler']).round(2)
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
 # --- 5. HAUPTBEREICH: HEADER ---
-col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
-with col_l2:
+col_logo1, col_logo2, col_logo3 = st.columns([1, 1.5, 1])
+with col_logo2:
     if os.path.exists("KbiK-Logo.jpg"):
         st.image("KbiK-Logo.jpg", use_container_width=True)
     else:
@@ -159,16 +168,16 @@ t_liste = ["-- Bitte wählen --", "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arns
 team_choice = st.sidebar.selectbox("Dein Stützpunkt:", t_liste, key="t_in")
 
 if v_input and n_input and team_choice != "-- Bitte wählen --":
-    # WICHTIG: Abgleich-ID immer in Kleinbuchstaben
+    # Normalisierte ID für den Wochen-Check
     search_id = f"{v_input.lower()} {n_input.lower()}"
     kw, jahr = datetime.now().isocalendar()[1], datetime.now().isocalendar()[0]
     
-    # Punkte-Check
+    # Aktuelle Wochenpunkte berechnen
     akt_m = 0
     if not df.empty:
         akt_m = df[(df['Full_ID'] == search_id) & (df["KW"] == kw) & (df["Jahr"] == jahr) & (df["Details"].str.contains("min|Min"))]["Punkte"].sum()
     
-    st.sidebar.metric("Deine Wochen-Punkte", f"{int(akt_m)} / {LIMIT_MINUTEN}")
+    st.sidebar.metric("Deine Wochen-Punkte (Zeit)", f"{int(akt_m)} / {LIMIT_MINUTEN}")
     kat = st.sidebar.radio("Was meldest du?", ["Lesezeit (Minuten)", "Buch abgeschlossen 🏆"])
     
     with st.sidebar.form("entry_form", clear_on_submit=True):
@@ -184,7 +193,7 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
             if not confirm:
                 st.error("Bitte Haken setzen!")
             elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
-                st.error(f"Limit erreicht! Du hast diese Woche schon {int(akt_m)} Punkte.")
+                st.error(f"Limit erreicht! Du hast diese Woche bereits {int(akt_m)} Punkte durch Lesezeit.")
             elif worksheet:
                 worksheet.append_row([datetime.now().strftime("%d.%m.%Y"), v_input, n_input, team_choice, "Lesen", auswahl, p])
                 st.sidebar.success("Gespeichert!")
@@ -198,7 +207,7 @@ with col_tab1:
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty: 
         st.table(ranking_data.set_index("Team").style.format({"Durchschnitt": "{:.2f}"}))
-    else: st.write("Warte auf Daten...")
+    else: st.write("Noch keine Daten vorhanden.")
 
 with col_tab2:
     st.subheader("📜 Letzte Aktivitäten", anchor=False)
