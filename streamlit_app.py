@@ -39,7 +39,7 @@ st.markdown("""
     /* Header Zentrierung */
     .header-container { text-align: center; width: 100%; }
     .tight-title { margin-top: -100px !important; line-height: 1.1; text-align: center; color: #31333F !important; }
-    .tight-subtitle { margin-top: -20px !important; color: #666 !important; text-align: center; }
+    .tight-subtitle { margin-top: -60px !important; color: #666 !important; text-align: center; }
 
     /* Metriken Hauptbereich */
     [data-testid="stMain"] [data-testid="stMetric"] { 
