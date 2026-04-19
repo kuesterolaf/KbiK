@@ -103,7 +103,7 @@ with col_logo2:
 
 # Titel und Subtitel zentriert darunter
 st.markdown('<div class="centered-header">', unsafe_allow_html=True)
-st.markdown('<h1 style="text-align: center; margin-top: 50px;">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align: center; margin-top: -50px;">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
 st.markdown('<h3 style="text-align: center; color: #666;">Die Sommer-Leseliga des FLVW</h3>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
