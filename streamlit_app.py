@@ -93,7 +93,7 @@ if not df.empty:
 
 # --- SIDEBAR: LOGO & SPIELER KABINE ---
 # Logo ganz oben in der Sidebar platzieren
-st.sidebar.image("flvw-logo.png", use_container_width=True)
+st.sidebar.image("KbiK-Logo.png", use_container_width=True)
 st.sidebar.markdown("---")
 st.sidebar.header("👟 Spieler Kabine")
 
