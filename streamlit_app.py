@@ -7,10 +7,11 @@ from google.oauth2.service_account import Credentials
 # --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
 
-# CSS für das Styling der Metriken
+# CSS für das Styling der Metriken und das Ausrichten des Logos
 st.markdown("""
     <style>
     .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #f0f2f6; }
+    [data-testid="stHorizontalBlock"] { align-items: center; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -74,9 +75,14 @@ def get_capped_ranking(df_full):
     
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
-# --- UI HAUPTBEREICH ---
-st.title("⚽ Kicken beginnt im Kopf")
-st.subheader("Die Sommer-Leseliga des FLVW", anchor=False)
+# --- UI HAUPTBEREICH (TITEL MIT LOGO) ---
+t_col1, t_col2 = st.columns([0.15, 0.85])
+with t_col1:
+    st.image("flvw-logo.png", width=120)
+with t_col2:
+    st.title("Kicken beginnt im Kopf")
+    st.subheader("Die Sommer-Leseliga des FLVW", anchor=False)
+
 st.markdown("---")
 
 # STATISTIK-METRIKEN OBEN
@@ -91,10 +97,7 @@ if not df.empty:
         st.metric("Aktive Spieler 🏃‍♂️", df['Full_ID'].nunique() if 'Full_ID' in df.columns else 0)
     st.markdown("---")
 
-# --- SIDEBAR: LOGO & SPIELER KABINE ---
-# Logo ganz oben in der Sidebar platzieren
-st.sidebar.image("KbiK-Logo.png", use_container_width=True)
-st.sidebar.markdown("---")
+# --- SIDEBAR: SPIELER KABINE ---
 st.sidebar.header("👟 Spieler Kabine")
 
 st.sidebar.info("""
@@ -179,7 +182,6 @@ with col1:
 with col2:
     st.subheader("📜 Live-Ticker", anchor=False)
     if not df.empty:
-        # Datenschutz: Keine Namen im öffentlichen Ticker
         hist_df = df.iloc[::-1][["Datum", "Team", "Details"]].head(10)
         st.table(hist_df)
     else:
