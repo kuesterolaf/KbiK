@@ -71,14 +71,15 @@ st.title("⚽ Kicken beginnt im Kopf")
 st.subheader("Die Sommer-Leseliga des FLVW", anchor=False)
 st.markdown("---")
 
-# NEU: Statistik-Metriken oben für mehr "Dashboard"-Feeling
+# STATISTIK-METRIKEN OBEN
 if not df.empty:
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric("Gelesene Bücher 📚", len(df[~df["Details"].str.contains("min")]))
     with m2:
-        # Schätzung der Lesestunden (Punkte x 15 Min / 60)
-        st.metric("Lesestunden (ca.) ⏱️", f"{int(df[df['Details'].str.contains('min')]['Punkte'].sum() * 15 / 60)} h")
+        # GEÄNDERT: Jetzt werden Leseminuten angezeigt (Punkte x 15)
+        ges_min = int(df[df['Details'].str.contains('min')]['Punkte'].sum() * 15)
+        st.metric("Leseminuten gesamt ⏱️", f"{ges_min} min")
     with m3:
         st.metric("Aktive Spieler 🏃‍♂️", df['Full_ID'].nunique() if 'Full_ID' in df.columns else 0)
     st.markdown("---")
@@ -86,7 +87,6 @@ if not df.empty:
 # --- SIDEBAR: SPIELER KABINE ---
 st.sidebar.header("👟 Spieler Kabine")
 
-# NEU: Die besprochene Info-Box
 st.sidebar.info("""
 **So sammelst du Punkte:**
 1. Namen & Stützpunkt eingeben.
@@ -112,7 +112,6 @@ team_choice = st.sidebar.selectbox("Dein Stützpunkt:", t_liste, key="t_final")
 if v_name and n_name and team_choice != "-- Bitte wählen --":
     current_id = f"{v_name.lower()} {n_name.lower()}"
     
-    # Team-Kontrolle
     can_proceed = True
     if not df.empty and 'Full_ID' in df.columns:
         existing = df[df['Full_ID'] == current_id]
@@ -137,7 +136,6 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
                 auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"], key="b_final")
                 p = 5 if "100" in auswahl else 10 if "bis 200" in auswahl else 15
 
-            # NEU: Die Sicherheitsabfrage
             confirm = st.checkbox("Ich bestätige, dass meine Angaben stimmen.")
 
             if st.form_submit_button("⚽ Punkt für mein Team!"):
@@ -164,7 +162,6 @@ with col1:
     st.subheader("🏆 Team-Tabelle", anchor=False)
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty:
-        # Nutzung von st.dataframe statt st.table für eine modernere Ansicht
         st.dataframe(ranking_data.set_index("Team").style.format({"Durchschnitt": "{:.2f}"}), use_container_width=True)
     else:
         st.info("Noch keine Ergebnisse.")
@@ -172,7 +169,6 @@ with col1:
 with col2:
     st.subheader("📜 Live-Ticker", anchor=False)
     if not df.empty:
-        # Live-Ticker im Tabellenformat für bessere Lesbarkeit
         hist_df = df.iloc[::-1][["Datum", "Team", "Details"]].head(10)
         st.table(hist_df)
     else:
