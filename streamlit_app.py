@@ -77,7 +77,6 @@ if not df.empty:
     with m1:
         st.metric("Gelesene Bücher 📚", len(df[~df["Details"].str.contains("min")]))
     with m2:
-        # GEÄNDERT: Jetzt werden Leseminuten angezeigt (Punkte x 15)
         ges_min = int(df[df['Details'].str.contains('min')]['Punkte'].sum() * 15)
         st.metric("Leseminuten gesamt ⏱️", f"{ges_min} min")
     with m3:
@@ -169,10 +168,20 @@ with col1:
 with col2:
     st.subheader("📜 Live-Ticker", anchor=False)
     if not df.empty:
+        # Datenschutz: Namen im Ticker ausblenden
         hist_df = df.iloc[::-1][["Datum", "Team", "Details"]].head(10)
         st.table(hist_df)
     else:
         st.write("Warte auf erste Einträge...")
 
+# --- DATENSCHUTZ & IMPRESSUM ---
 st.markdown("---")
-st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler geteilt.")
+with st.expander("⚖️ Datenschutz & Impressum"):
+    st.write("""
+    **Datenschutzhinweis:** Mit der Nutzung dieser App und der Eingabe von Vorname, Nachname und Stützpunkt erklärst du dich einverstanden, dass diese Daten zum Zwecke des Wettbewerbs gespeichert werden. 
+    Die Daten werden ausschließlich zur Berechnung des Team-Rankings verwendet und nicht an Dritte weitergegeben. 
+    Im öffentlichen Live-Ticker erscheinen keine Namen, um deine Privatsphäre zu schützen.
+    
+    **Verantwortlich:** Fußball- und Leichtathletik-Verband Westfalen e. V. (FLVW)  
+    Jakob-Koenen-Straße 2, 59174 Kamen
+    """)
