@@ -125,8 +125,8 @@ def get_capped_ranking(df_full):
 # --- 5. HAUPTBEREICH: HEADER ---
 col_logo1, col_logo2, col_logo3 = st.columns([1, 1.5, 1])
 with col_logo2:
-    if os.path.exists("KbiK-Logo.jpg"):
-        st.image("KbiK-Logo.jpg", use_container_width=True)
+    if os.path.exists("flvw-logo.png"):
+        st.image("flvw-logo.png", use_container_width=True)
     else:
         st.markdown("<h1 style='text-align: center;'>⚽</h1>", unsafe_allow_html=True)
 
