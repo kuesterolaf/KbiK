@@ -22,7 +22,7 @@ st.markdown("""
         color: white !important; 
     }
     
-    /* FIX: Metrik-Box in der Sidebar transparent machen (Entfernt den weißen Klotz) */
+    /* FIX: Metrik-Box in der Sidebar transparent machen */
     [data-testid="stSidebar"] [data-testid="stMetric"] {
         background-color: transparent !important;
         border: none !important;
@@ -47,15 +47,16 @@ st.markdown("""
         margin-top: -15px !important; 
         line-height: 1.1; 
         text-align: center;
+        color: #31333F !important; /* Haupttitel wieder dunkel für Kontrast */
     }
     
     .tight-subtitle { 
         margin-top: -10px !important; 
-        color: #666; 
+        color: #666 !important; 
         text-align: center;
     }
 
-    /* Metriken im Hauptbereich (Weiß mit Schatten) */
+    /* Metriken im Hauptbereich */
     [data-testid="stMain"] [data-testid="stMetric"] { 
         background-color: #ffffff; 
         padding: 15px; 
@@ -63,15 +64,26 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
         border: 1px solid #f0f2f6; 
     }
+    [data-testid="stMain"] [data-testid="stMetric"] * {
+        color: #31333F !important;
+    }
     
-    /* Weißer Button in der Sidebar */
-    div.stButton > button:first-child { 
+    /* BUTTON FIX: Weißer Button mit DAUERHAFT roter Schrift */
+    div.stButton > button { 
         background-color: #ffffff !important; 
         color: #E31E24 !important; 
-        border: none !important; 
+        border: 1px solid #ffffff !important; 
         font-weight: bold !important; 
         width: 100%; 
         margin-top: 10px;
+        display: block;
+    }
+
+    /* Verhindert, dass die Schrift beim Hover verschwindet */
+    div.stButton > button:hover, div.stButton > button:active, div.stButton > button:focus {
+        color: #E31E24 !important;
+        background-color: #f0f2f6 !important;
+        border: 1px solid #f0f2f6 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -125,7 +137,6 @@ def get_capped_ranking(df_full):
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
 # --- 5. HAUPTBEREICH: ZENTRIERTER HEADER ---
-# Spalten für die Zentrierung des Logos
 col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
 with col_l2:
     if os.path.exists("KbiK-Logo.jpg"):
@@ -135,7 +146,6 @@ with col_l2:
     else:
         st.markdown("<h1 style='text-align: center;'>⚽</h1>", unsafe_allow_html=True)
 
-# Zentrierte Titel
 st.markdown('<div class="header-container">', unsafe_allow_html=True)
 st.markdown('<h1 class="tight-title">Kicken beginnt im Kopf</h1>', unsafe_allow_html=True)
 st.markdown('<h3 class="tight-subtitle">Die Sommer-Leseliga des FLVW</h3>', unsafe_allow_html=True)
