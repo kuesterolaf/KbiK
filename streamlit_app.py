@@ -96,8 +96,8 @@ def get_capped_ranking(df_full):
 col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
 
 with col_logo2:
-    if os.path.exists("flvw-logo.png"):
-        st.image("flvw-logo.png", use_container_width=True)
+    if os.path.exists("KbiK-Logo.png"):
+        st.image("KbiK-Logo.png", use_container_width=True)
     else:
         st.markdown("<h1 style='text-align: center;'>⚽</h1>", unsafe_allow_html=True)
 
