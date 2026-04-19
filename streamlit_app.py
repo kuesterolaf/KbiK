@@ -5,12 +5,64 @@ import gspread
 from google.oauth2.service_account import Credentials
 import os
 
-# --- KONFIGURATION (Original) ---
+# --- KONFIGURATION ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
+
+# --- DESIGN UPGRADE: ROTE SIDEBAR & STYLING ---
+st.markdown("""
+    <style>
+    /* Sidebar Hintergrund auf FLVW-Rot */
+    [data-testid="stSidebar"] {
+        background-color: #E31E24;
+    }
+    
+    /* Text in der Sidebar auf Weiß */
+    [data-testid="stSidebar"] .stMarkdown, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        color: #ffffff !important;
+    }
+    
+    /* Eingabefelder in der Sidebar lesbar machen */
+    [data-testid="stSidebar"] .stTextInput>div>div>input,
+    [data-testid="stSidebar"] .stSelectbox>div>div>div {
+        background-color: #f0f2f6;
+        color: #31333F;
+    }
+
+    /* Metriken Styling im Hauptbereich */
+    .stMetric { 
+        background-color: #ffffff; 
+        padding: 15px; 
+        border-radius: 10px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+        border: 1px solid #f0f2f6; 
+    }
+    
+    /* Button Styling */
+    div.stButton > button:first-child {
+        background-color: #ffffff;
+        color: #E31E24;
+        border: 2px solid #ffffff;
+        font-weight: bold;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #f0f2f6;
+        color: #E31E24;
+    }
+    
+    /* Titel-Logo Ausrichtung */
+    [data-testid="stHorizontalBlock"] { align-items: center; }
+    </style>
+    """, unsafe_allow_html=True)
+
 LIMIT_MINUTEN = 20
 SPALTEN = ["Datum", "Vorname", "Nachname", "Team", "Typ", "Details", "Punkte"]
 
-# --- DATA CONNECTION (Original) ---
+# --- DATA CONNECTION ---
 @st.cache_resource
 def get_client():
     try:
@@ -43,7 +95,7 @@ def load_data():
 
 df, worksheet = load_data()
 
-# --- LOGIK: TEAM-RANKING (Original) ---
+# --- LOGIK: TEAM-RANKING ---
 def get_capped_ranking(df_full):
     if df_full.empty or "Vorname" not in df_full.columns:
         return pd.DataFrame(columns=["Team", "Durchschnitt", "Spieler"])
@@ -67,21 +119,20 @@ def get_capped_ranking(df_full):
     
     return stats[['Team', 'Durchschnitt', 'Spieler']].sort_values("Durchschnitt", ascending=False)
 
-# --- UI HAUPTBEREICH ---
-# Logo-Handling neben dem Titel (Sicherheitsabfrage eingebaut)
-t_col1, t_col2 = st.columns([0.2, 0.8])
-with t_col1:
+# --- UI HAUPTBEREICH: TITEL & LOGO ---
+header_col1, header_col2 = st.columns([0.2, 0.8])
+with header_col1:
     if os.path.exists("flvw-logo.png"):
-        st.image("flvw-logo.png", width=450)
+        st.image("flvw-logo.png", width=140)
     else:
         st.write("⚽")
-with t_col2:
+with header_col2:
     st.title("Kicken beginnt im Kopf")
     st.subheader("Die Sommer-Leseliga des FLVW", anchor=False)
 
 st.markdown("---")
 
-# Hinzugefügt: Metriken oben
+# METRIKEN OBEN
 if not df.empty:
     m1, m2, m3 = st.columns(3)
     with m1:
@@ -93,9 +144,8 @@ if not df.empty:
         st.metric("Aktive Spieler 🏃‍♂️", df['Full_ID'].nunique() if 'Full_ID' in df.columns else 0)
     st.markdown("---")
 
-# --- SIDEBAR: SPIELER KABINE (Original Layout) ---
-st.sidebar.header("👟 Spieler-Kabine")
-
+# --- SIDEBAR: SPIELER KABINE ---
+st.sidebar.header("👟 Spieler Kabine")
 st.sidebar.info("""
 **So sammelst du Punkte:**
 1. Namen & Stützpunkt eingeben.
@@ -107,21 +157,13 @@ st.sidebar.info("""
 v_name = st.sidebar.text_input("Vorname:", key="v_final").strip()
 n_name = st.sidebar.text_input("Nachname:", key="n_final").strip()
 
-t_liste = [
-    "-- Bitte wählen --", 
-    "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arnsberg/Soest", "Beckum", 
-    "Bielefeld", "Bochum", "Detmold", "Dortmund", "Gelsenkirchen", 
-    "Gütersloh", "Hagen", "Herford", "Herne", "Hochsauerlandkreis", 
-    "Höxter", "Lemgo", "Lippstadt", "Lübbecke/Minden", "Lüdenscheid/Iserlohn", 
-    "Münster I", "Münster II", "Olpe", "Paderborn", "Recklinghausen", 
-    "Siegen/Wittgenstein", "Steinfurt", "Tecklenburg", "Unna/Hamm"
-]
+t_liste = ["-- Bitte wählen --", "Ahaus/Coesfeld I", "Ahaus/Coesfeld II", "Arnsberg/Soest", "Beckum", "Bielefeld", "Bochum", "Detmold", "Dortmund", "Gelsenkirchen", "Gütersloh", "Hagen", "Herford", "Herne", "Hochsauerlandkreis", "Höxter", "Lemgo", "Lippstadt", "Lübbecke/Minden", "Lüdenscheid/Iserlohn", "Münster I", "Münster II", "Olpe", "Paderborn", "Recklinghausen", "Siegen/Wittgenstein", "Steinfurt", "Tecklenburg", "Unna/Hamm"]
 team_choice = st.sidebar.selectbox("Dein Stützpunkt:", t_liste, key="t_final")
 
 if v_name and n_name and team_choice != "-- Bitte wählen --":
     current_id = f"{v_name.lower()} {n_name.lower()}"
-    
     can_proceed = True
+    
     if not df.empty and 'Full_ID' in df.columns:
         existing = df[df['Full_ID'] == current_id]
         if not existing.empty and existing['Team'].iloc[0] != team_choice:
@@ -145,12 +187,11 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
                 auswahl = st.selectbox("Umfang:", ["Buch bis 100 S. (5 Pkt)", "Buch bis 200 S. (10 Pkt)", "Buch über 200 S. (15 Pkt)"], key="b_final")
                 p = 5 if "100" in auswahl else 10 if "bis 200" in auswahl else 15
 
-            # Hinzugefügt: Sicherheitsabfrage
             confirm = st.checkbox("Ich bestätige, dass meine Angaben stimmen.")
 
             if st.form_submit_button("Eintragen"):
                 if not confirm:
-                    st.error("Bitte setze erst den Haken bei der Bestätigung!")
+                    st.error("Bitte Haken setzen!")
                 elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN:
                     st.error("Wochenlimit erreicht!")
                 elif worksheet:
@@ -161,36 +202,24 @@ if v_name and n_name and team_choice != "-- Bitte wählen --":
                         st.cache_resource.clear()
                         st.rerun()
                     except Exception:
-                        st.sidebar.error("Fehler beim Speichern!")
+                        st.sidebar.error("Fehler!")
 
-        st.sidebar.caption("Tipp: Bei Fehlern melde dich bitte direkt bei deinem Trainer.")
-
-# --- HAUPTBEREICH ANZEIGE (Original Struktur) ---
+# --- ANZEIGE TABELLEN ---
 col1, col2 = st.columns([1, 1.2])
-
 with col1:
     st.subheader("🏆 Team-Tabelle", anchor=False)
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty:
         st.table(ranking_data.set_index("Team").style.format({"Durchschnitt": "{:.2f}"}))
-    else:
-        st.info("Noch keine Ergebnisse.")
 
 with col2:
-    st.subheader("📜 Live-Ticker", anchor=False)
+    st.subheader("📜 Letzte Aktivitäten", anchor=False)
     if not df.empty:
-        # Datenschutz: Namen werden hier nicht angezeigt
         hist_df = df.iloc[::-1][["Datum", "Team", "Details", "Punkte"]].head(10)
         st.dataframe(hist_df, use_container_width=True, hide_index=True)
-    else:
-        st.write("Warte auf erste Einträge...")
 
-st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler geteilt. Einzelne Spieler werden aus Datenschutzgründen nicht angezeigt!")
-# Hinzugefügt: Datenschutz & Impressum
+# --- FUSSZEILE ---
 st.markdown("---")
 with st.expander("⚖️ Datenschutz & Impressum"):
-    st.write("""
-    **Datenschutzhinweis:** Mit der Nutzung dieser App erklärst du dich einverstanden, dass Vorname, Nachname und Stützpunkt zum Zwecke des Wettbewerbs gespeichert werden. 
-    Die Daten werden nicht an Dritte weitergegeben.
-    **Verantwortlich:** Fußball- und Leichtathletik-Verband Westfalen e. V. (FLVW), Kamen.
-    """)
+    st.write("Verantwortlich: Fußball- und Leichtathletik-Verband Westfalen e. V. (FLVW)")
+st.info("ℹ️ Team-Power: Die Punkte werden durch die Anzahl der teilnehmenden Spieler geteilt.")
