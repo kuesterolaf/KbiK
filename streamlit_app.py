@@ -169,7 +169,7 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
                     # --- FEEDBACK & EFFEKT ---
                     st.balloons()
                     st.success(f"Super! Deine {p} Punkte wurden dem Team {team_choice} hinzugefügt! ⚽📚")
-                    time.sleep(2)
+                    time.sleep(5)
                     
                     st.cache_resource.clear()
                     st.rerun()
