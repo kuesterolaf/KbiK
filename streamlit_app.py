@@ -4,6 +4,7 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 import os
+import time
 
 # --- 1. KONFIGURATION & KONSTANTEN ---
 st.set_page_config(page_title="Kicken beginnt im Kopf", page_icon="⚽", layout="wide")
@@ -124,7 +125,14 @@ if not df.empty:
 
 # --- 7. SIDEBAR ---
 st.sidebar.header("👟 Spieler-Kabine")
-st.sidebar.info("**So sammelst du Punkte:**\n1. Name & Team wählen.\n2. Lesezeit oder Buch wählen.\n3. Bestätigen & Eintragen.\n\n*Limit: 20 Pkt. Lesezeit pro Woche.*")
+st.sidebar.info("""
+**So sammelst du Punkte:**
+1. Name & Team wählen.
+2. Lesezeit oder Buch wählen.
+3. Bestätigen & Eintragen.
+
+*Limit: 20 Pkt. Lesezeit pro Woche.*
+""")
 
 v_input = st.sidebar.text_input("Vorname:", key="v_in").strip()
 n_input = st.sidebar.text_input("Nachname:", key="n_in").strip()
@@ -151,10 +159,18 @@ if v_input and n_input and team_choice != "-- Bitte wählen --":
                 p = 5 if "100" in auswahl else 10 if "200" in auswahl else 15
             confirm = st.checkbox("Ich bestätige meine Angaben.")
             if st.form_submit_button("Eintragen"):
-                if not confirm: st.error("Bitte Haken setzen!")
-                elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN: st.error(f"Limit erreicht!")
+                if not confirm: 
+                    st.error("Bitte Haken setzen!")
+                elif kat == "Lesezeit (Minuten)" and (akt_m + p) > LIMIT_MINUTEN: 
+                    st.error(f"Limit erreicht!")
                 elif worksheet:
                     worksheet.append_row([datetime.now().strftime("%d.%m.%Y"), v_input, n_input, team_choice, "Lesen", auswahl, p])
+                    
+                    # --- FEEDBACK & EFFEKT ---
+                    st.balloons()
+                    st.success(f"Super! Deine {p} Punkte wurden dem Team {team_choice} hinzugefügt! ⚽📚")
+                    time.sleep(2)
+                    
                     st.cache_resource.clear()
                     st.rerun()
 
@@ -164,7 +180,6 @@ with col_tab1:
     st.subheader("🏆 Team-Tabelle (Top 5)", anchor=False)
     ranking_data = get_capped_ranking(df)
     if not ranking_data.empty: 
-        # HTML Rendering ohne Index
         st.write(ranking_data.head(5).style.format({"Durchschnitt": "{:.2f}"}).hide(axis='index').to_html(), unsafe_allow_html=True)
         if len(ranking_data) > 5:
             with st.expander("Vollständige Tabelle anzeigen"):
